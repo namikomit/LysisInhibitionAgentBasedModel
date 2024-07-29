@@ -169,13 +169,13 @@ end
 growth_rate = 0 #per minute
 lysis_rate = 1/23  #per minute
 growth_timer = 10 #max growth timer
-lysis_timer = 23 #max lysis timer
+lysis_timer = 60 #max lysis timer
 eclipse = 15    #eclipse time in minutes
 burst_size = 100 #burst size
 burst_rate=burst_size/(1/lysis_rate-eclipse)
 eta = 5e-9  #adsorption rate per ml/min
 lysis_inhibition=true
-lysis_inhibition_timer=5
+lysis_inhibition_timer=30
 lysis_from_without=false
 lysis_from_without_phage=10
 lo_resistance=false
@@ -224,10 +224,12 @@ time, Btimeseries, Itimeseries, Ptimeseries, irecord = simulate_population_agent
 
 phage = 0
 mask = (Bstate .>= 1) .& (Bstate .<= growth_timer)
+
 bacteria = sum(mask)
 mask = (Bstate .>= growth_timer + 1)
 infected = sum(mask)
 final_time = 60 # minutes
+eta=0
 
 time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2 = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
@@ -240,7 +242,15 @@ time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2 = simulate_population_
 )
 
 # Save the data
-@save "population_data.jld2" time2 Btimeseries2 Itimeseries2 Ptimeseries2 irecord2
+
+#@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" time2 Btimeseries2 Itimeseries2 Ptimeseries2 irecord2 Bstate Pstate Istate LORstate time_step record_time_step final_time carrying_capacity growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
+@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
+    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, Bstate, Pstate, Istate, LORstate,
+    time_step, record_time_step, final_time, carrying_capacity, growth_rate, lysis_rate,
+    burst_rate, eclipse, growth_timer, lysis_timer, eta, lysis_inhibition, lysis_inhibition_timer,
+    lysis_from_without, lysis_from_without_phage, lo_resistance, lo_resistance_time,
+    li_collapse, li_collapse_phage
+end
 
 # Create the plot
 plot(time2[1:irecord2], Btimeseries2[1:irecord2], label="Bacteria", linewidth=2)
@@ -256,7 +266,7 @@ title!("Population Dynamics")
 #plot!(legend=:topright)
 
 
-savefig("population_dynamics_plot.png")
+savefig("population_dynamics_plot_lysis_timer($lysis_timer)_MSOI$(msoi).png")
 
 
 
@@ -273,4 +283,13 @@ plot!(time2[2:irecord2] .+ 15, P_diff, label="Difference in Phage Level")
 xlabel!("Time (minutes)")
 ylabel!("Difference in Phage Level")
 
-savefig("phage_difference_plot.png")
+savefig("phage_difference_plot_lysis_timer($lysis_timer)__MSOI$(msoi).png")
+
+plot(size=(800, 480))
+# Filter out Pstate values that are not zero
+filtered_Pstate = Pstate[Pstate .!= 0]
+
+# Create the histogram
+histogram(filtered_Pstate, bins=30, label="Phage State", xlabel="Pstate", ylabel="Frequency", title="Histogram of Pstate (excluding Pstate=0)")
+
+savefig("Time_To_Lysis_distribution_lysis_timer($lysis_timer)__MSOI$(msoi).png")
