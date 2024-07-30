@@ -201,8 +201,8 @@ end
 
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
-growth_rate = 2.0/60. #per minute
-lysis_rate = 1/23  #per minute
+growth_rate = 0. #2.0/60. #per minute
+lysis_rate = 1.0/23.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 60 #max lysis timer
 eclipse = 15    #eclipse time in minutes
@@ -228,9 +228,10 @@ nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it
 bacteria = Int(round(2e7*volume)) #cells
 infected=Int(round(1e7*volume))
 si_duration=3. #minutes
-msoi=0. #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
-P0 = msoi * (eta * ((bacteria + infected) / volume)^2) / (1 - exp(-eta * Float64(bacteria + infected) / volume * si_duration))
+msoi=7.6 #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
+P0 = msoi * (eta * ((bacteria) / volume)^2) / (1 - exp(-eta * Float64(bacteria) / volume * si_duration))
 phage = Int(round(P0 * volume)) # pfu
+print(phage)
 si_time = 15. # minutes
 final_time = si_time # minutes
 
@@ -265,7 +266,7 @@ time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, 
 
 phage = 0
 final_time = 60 # minutes
-#eta=0.0
+eta=0.0
 #println(length(Bstate), length(Pstate), length(Istate), length(LORstate), bacteria)
 
 time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
@@ -329,6 +330,6 @@ savefig(figure_file_path)
 plot(size=(800, 480))
 
 # Create the histogram
-histogram(lysis_time_record2, bins=30, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
+histogram(lysis_time_record2, bins=100, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
 figure_file_path = joinpath(figures_dir, "lysis_time_histogram_lysis_timer($lysis_timer)_MSOI$(msoi).pdf")
 savefig(figure_file_path)
