@@ -10,7 +10,7 @@ using JLD2
 
 # Main function
 function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, bacteria, phage, infected, volume, 
-    growth_rate, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
+    growth_rate, nutrient, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
     lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_time=5, li_collapse=false, li_collapse_phage=100)
     # Add your code here
     
@@ -117,10 +117,12 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
         #println("new bacteria")
         mask_Bstate = Bstate .== growth_timer
         #I can use the random numbers above since they were not used for this mask
-        mask_grow = random_numbers[mask_Bstate] .< (grate * time_step)
-        if any(mask_grow)
-            new_bacteria = sum(mask_grow)
-            Bstate[mask_grow] .= 1
+        if any(mask_Bstate)
+            mask_grow = mask_Bstate .& (random_numbers .< (grate * time_step))
+            if any(mask_grow)
+                new_bacteria = sum(mask_grow)
+                Bstate[mask_grow] .= 1
+            end
         end
         # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
         #println("lysis")
@@ -173,7 +175,12 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
             Istate = append!(Istate, zeros(UInt16, new_bacteria))
             LORstate = append!(LORstate, falses(new_bacteria))
         end
-        bacteria=sum(Bstate .>0)
+        bacteria=length(Bstate)
+
+        if bacteria > nutrient
+            println("Nutrient exhausted")
+            return (time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record)
+        end
         #println(bacteria, " bacteria ", sum(Bstate .>=0), " sum ", length(Bstate))
         #println("Pstate ", length(Pstate), " Istate ", length(Istate), " LORstate ", length(LORstate))
         itime+=1
@@ -185,15 +192,16 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
             push!(Ptimeseries,phage)
             println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end])
         end
+        #println("bacteria", bacteria, timenow, final_time)
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record
+    return time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria
 end
 
 
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
-growth_rate = 0 #per minute
+growth_rate = 2.0/60. #per minute
 lysis_rate = 1/23  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 60 #max lysis timer
@@ -214,14 +222,15 @@ time_step=0.01
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-factor=1.0
-volume = factor #ml
-bacteria = Int(round(2e5)) #cells
-infected=Int(round(1e5))
+
+volume = 0.01 #ml
+nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
+bacteria = Int(round(2e7*volume)) #cells
+infected=Int(round(1e7*volume))
 si_duration=3. #minutes
 msoi=0. #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
-P0 = msoi * (eta * ((bacteria + infected) / factor)^2) / (1 - exp(-eta * Float64(bacteria + infected) / factor * si_duration))
-phage = Int(round(P0 * factor)) # pfu
+P0 = msoi * (eta * ((bacteria + infected) / volume)^2) / (1 - exp(-eta * Float64(bacteria + infected) / volume * si_duration))
+phage = Int(round(P0 * volume)) # pfu
 si_time = 15. # minutes
 final_time = si_time # minutes
 
@@ -243,9 +252,9 @@ mkpath(figures_dir)
 
 
 # Call the main function
-time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record = simulate_population_agents(
+time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
-    bacteria, phage, infected, volume, growth_rate, 
+    bacteria, phage, infected, volume, growth_rate, nutrient,
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
     lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
     lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
@@ -256,11 +265,12 @@ time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record = simulate_popula
 
 phage = 0
 final_time = 60 # minutes
-eta=0
+#eta=0.0
+#println(length(Bstate), length(Pstate), length(Istate), length(LORstate), bacteria)
 
-time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2 = simulate_population_agents(
+time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, Bstate, Pstate, Istate, LORstate, bacteria = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
-    bacteria, phage, infected, volume, growth_rate, 
+    bacteria, phage, infected, volume, growth_rate, nutrient,
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
     lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
     lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
@@ -272,7 +282,7 @@ append!(lysis_time_record2, lysis_time_record)
 # Save the data
 
 data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2")
-@save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 Bstate Pstate Istate LORstate time_step record_time_step final_time volume growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
+@save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 Bstate Pstate Istate LORstate time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
 #@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
 #    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, 
 #    Bstate, Pstate, Istate, LORstate, time_step, record_time_step, 
