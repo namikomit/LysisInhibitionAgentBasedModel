@@ -6,8 +6,10 @@ using Plots
 using Distributions
 using JLD2
 
+
+
 # Main function
-function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, bacteria, phage, infected, bacteriaever, carrying_capacity, 
+function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, bacteria, phage, infected, volume, 
     growth_rate, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
     lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_time=5, li_collapse=false, li_collapse_phage=100)
     # Add your code here
@@ -42,7 +44,6 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
     - Ptimeseries: A list of the number of phage at each record time step.
     ...
     """
-    volume = carrying_capacity / 1e9  # volume in ml
 
     timenow = 0.0
     nrecord = Int(round(final_time / record_time_step))
@@ -57,110 +58,138 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
     Ptimeseries[irecord] = phage
     grate = growth_rate * growth_timer
     lrate = lysis_rate * lysis_timer
+    lysis_time_record = Float64[]
     println(volume)
     while timenow < final_time
-        phagegone=0
-        phagenew=0
-        for j in 1:bacteriaever
-            if Bstate[j]>0
-                phageinfect= rand(Poisson(eta*phage/volume*time_step))
-                if phageinfect > 0
-                    #phage infection actions
-                    #println("phage infection")
-                    phagegone += phageinfect
-                    Istate[j] += phageinfect
-                    if Bstate[j]<= growth_timer
-                        #This was the first infection, so it moves to the infected state
-                        #Note that multiple infection does not affect lysis timer since it is anyway zero
-                        infected+=1
-                        Bstate[j] = growth_timer + 1
-                    end
-                    if !LORstate[j] && lysis_from_without
-                        #The lysis from without can happen
-                        if Istate[j] > lysis_from_without_phage
-                            Bstate[j] = 0
-                            infected -= 1
-                            bacteria -= 1
-                            phagenew += max(Int(round(burst_rate * (Pstate[j] - eclipse))), 0)
-                        end
-                    elseif LORstate[j] || !lysis_from_without
-                        #lysis from without cannot happen
-                        if lysis_inhibition
-                            #lysis inbition can happen
-                            Bstate[j] = max(growth_timer + 1, Bstate[j] - lysis_inhibition_timer * phageinfect)
-                        end
-                        if li_collapse && Istate[j] > li_collapse_phage
-                            #lysis inbibition collapse happens
-                                Bstate[j] = 0
-                                infected -= 1
-                                bacteria -= 1
-                                phagenew += max(Int(round(burst_rate * (Pstate[j] - eclipse))), 0)
-                        end
-                    end
-                end
-                if Bstate[j] < growth_timer
-                    #growth actions
-                    #println("growth")
-                    if rand() < grate * time_step
-                        println(j)
-                        Bstate[j] += 1
-                        println(Bstate)
-                    end
-                elseif Bstate[j] == growth_timer
-                    #can divide
-                    #println("division")
-                    if rand() < grate * time_step
-                        Bstate[j] = 1
-                        bacteria += 1
-                        bacteriaever += 1
-                        println("bacteriaever ", bacteriaever)
-                        if bacteriaever < carrying_capacity
-                            Bstate[bacteriaever] = 1
-                        else
-                            println("Carrying capacity reached")
-                            timenow = final_time
-                            break
-                        end
-                    end
-                elseif Bstate[j] < growth_timer+lysis_timer
-                    #lysis actions
-                    #println("lysis actions")
-                    Pstate[j]+=time_step
-                    if lo_resistance
-                    #LO resistance can happen
-                        if !LORstate[j] && Pstate[j] > lo_resistance_time
-                            LORstate[j] = true
-                        end
-                    end
-                    if rand() < lrate * time_step
-                        Bstate[j]+=1
-                    end
-                elseif Bstate[j] == growth_timer+lysis_timer
-                    #can lyse
-                    #println("lysis")
-                    if rand() < lrate * time_step
-                        #lysis actions
-                        Bstate[j] = 0
-                        infected -= 1
-                        bacteria -= 1
-                        phagenew += max(Int(round(burst_rate * (Pstate[j] - eclipse))), 0)
-                    end
-                end
+        lo_new_phage=0 
+        lysis_new_phage=0
+        new_bacteria=0
+        #println("phage infection")
+        phageinfect_array= rand(Poisson(eta*phage/volume*time_step), bacteria)
+        #println("phage infection array", length(phageinfect_array), "Istate ",length(Istate))
+        Istate .+= phageinfect_array
+
+        # Create masks
+        mask_Bstate = Bstate .<= growth_timer
+        mask_phageinfect = phageinfect_array .> 0
+        # Combine masks for bacteria that are infected for the first time
+        combined_mask = mask_Bstate .& mask_phageinfect
+        # Update Bstate
+        if any(combined_mask)
+            Bstate[combined_mask] .= growth_timer + 1
+        end
+        if lysis_from_without
+            #println("lysis from without")
+            #The lysis from without can happen
+            check_LO = .!LORstate * Istate  #If true for LOR state, Istate will be multiplied by 0. 
+            mask_LO = check_LO .> lysis_from_without_phage
+            if any(mask_LO)
+                Bstate[mask_LO] .= 0
+                lo_new_phage = sum(max.(Int.(round.(burst_rate * (Pstate[mask_lysis] .- eclipse))), 0))
+                # Append the values of Pstate that match mask_LO to lysis_time_record
+                append!(lysis_time_record, Pstate[mask_LO])                     
             end
         end
-        phage=max(0,phage+phagenew-phagegone)
+        if lysis_inhibition
+            #println("lysis inhibition")
+            #The lysis inhibition can happen, but only the ones that did not do lysis from without
+            # Create a mask that is part of mask_phageinfect and not part of mask_LO
+            mask_LI = mask_phageinfect
+            if lysis_from_without
+                mask_LI= mask_phageinfect .& .!mask_LO
+            end  
+            if lo_resistance
+                #if LOR can happen, then the lysis inhibition should start only after LOR is established
+                mask_LI = mask_LI .& LORstate
+            end
+            # Create a mask for the bacteria that are in the growth timer     
+            if any(mask_LI)     
+                Bstate[mask_LI] .=max.(growth_timer+1,Bstate[mask_LI] .-lysis_inhibition_timer) 
+            end
+        end
+        # Update Bstate elements less than growth_timer with probability grate * time_step
+        #println("growth")
+        mask_Bstate = Bstate .< growth_timer
+        random_numbers = rand(length(Bstate))
+        if any(mask_Bstate)
+            Bstate[mask_Bstate] .= Bstate[mask_Bstate] .+ (random_numbers[mask_Bstate] .< (grate * time_step))
+        end
+        # Update Bstate elements equal to growth_timer with probability grate * time_step
+        #println("new bacteria")
+        mask_Bstate = Bstate .== growth_timer
+        #I can use the random numbers above since they were not used for this mask
+        mask_grow = random_numbers[mask_Bstate] .< (grate * time_step)
+        if any(mask_grow)
+            new_bacteria = sum(mask_grow)
+            Bstate[mask_grow] .= 1
+        end
+        # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
+        #println("lysis")
+        mask_Bstate = Bstate .< growth_timer+lysis_timer
+        #lysis actions
+        # Add time_step to all masked elements of Pstate
+        if any(mask_Bstate)
+            Pstate[mask_Bstate] .+= time_step   
+            if lo_resistance
+                LORstate[mask_Bstate] .= (Pstate[mask_Bstate] > lo_resistance_time)
+            end 
+        end                   
+        # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
+        mask_Bstate = (Bstate .> growth_timer) .& (Bstate .< growth_timer + lysis_timer)
+        if any(mask_Bstate)
+            Bstate[mask_Bstate] .= Bstate[mask_Bstate] .+ (random_numbers[mask_Bstate] .< (lrate * time_step)) 
+        end      
+        # Update Bstate elements equal to growth_timer + lysis_timer with probability lrate * time_step
+        #println("lysis new phage")
+        mask_Bstate = Bstate .== growth_timer + lysis_timer
+        if any(mask_Bstate)
+            #println("lysis new phage mask_Bstate")
+            mask_lysis = mask_Bstate .& (random_numbers .< lrate * time_step)
+            if any(mask_lysis)
+                Bstate[mask_lysis] .= 0
+                #println("lysis size")
+                lysis_new_phage = sum(max.(Int.(round.(burst_rate * (Pstate[mask_lysis] .- eclipse))), 0))
+                # Append the values of Pstate that match mask_lysis to lysis_time_record
+                append!(lysis_time_record, Pstate[mask_lysis])
+            end
+        end
+        #update of phage, infected, and bacteria should be done here at the end
+        #println("update")
+        phage += lo_new_phage + lysis_new_phage
+        phage=max(0,phage-sum(phageinfect_array))
+        # Create the mask for elements equal to 0
+        mask_nocell = Bstate .== 0
+        # Filter out elements where mask_nocell is true
+        if any(mask_nocell)
+            Bstate = Bstate[.!mask_nocell]
+            Pstate = Pstate[.!mask_nocell]
+            Istate = Istate[.!mask_nocell]
+            LORstate = LORstate[.!mask_nocell]
+        end
+
+        if new_bacteria>0
+        #Add the new bacteria, number new_bacteria
+            Bstate = append!(Bstate, ones(UInt16, new_bacteria))
+            Pstate = append!(Pstate, zeros(Float64, new_bacteria))
+            Istate = append!(Istate, zeros(UInt16, new_bacteria))
+            LORstate = append!(LORstate, falses(new_bacteria))
+        end
+        bacteria=sum(Bstate .>0)
+        #println(bacteria, " bacteria ", sum(Bstate .>=0), " sum ", length(Bstate))
+        #println("Pstate ", length(Pstate), " Istate ", length(Istate), " LORstate ", length(LORstate))
+
         timenow += time_step
         if timenow - time[irecord] >= record_time_step
             irecord += 1
             time[irecord] = timenow
             Btimeseries[irecord] = bacteria
-            Itimeseries[irecord] = infected
+            Itimeseries[irecord] = sum(Bstate .> growth_timer)
             Ptimeseries[irecord] = phage
             println(irecord, " ", time[irecord], " ", Btimeseries[irecord], " ", Itimeseries[irecord], " ", Ptimeseries[irecord])
         end
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, irecord
+    return time, Btimeseries, Itimeseries, Ptimeseries, irecord, lysis_time_record
 end
 
 
@@ -188,7 +217,7 @@ time_step=0.01
 record_time_step = 1 #minutes
 
 factor=0.01
-carrying_capacity = Int(round(1e9*factor)) #max cells
+volume = factor #ml
 bacteria = Int(round(2e5)) #cells
 infected=Int(round(1e5))
 si_duration=3. #minutes
@@ -198,22 +227,21 @@ phage = Int(round(P0 * factor)) # pfu
 si_time = 15. # minutes
 final_time = si_time # minutes
 
-Bstate = zeros(Int, carrying_capacity) # 1 to growth_timer is uninfected, growth_timer+1 to growth_timer+lysis_timer is infected
+Bstate = zeros(UInt16, bacteria) # 1 to growth_timer is uninfected, growth_timer+1 to growth_timer+lysis_timer is infected
 # assign a random integer number between 1 and growth_timer to each bacteria
-Pstate = zeros(Float64, carrying_capacity) # recording time spent in infected state, to compute number of produced phages for an infected bacteria, proportional to time spent in infected state (minus eclipse)
-Istate = zeros(Int, carrying_capacity) # Count the number of infection in total
-LORstate = falses(carrying_capacity) # boolean, True if it is in Lysis from without resistant state
+Pstate = zeros(Float64, bacteria) # recording time spent in infected state, to compute number of produced phages for an infected bacteria, proportional to time spent in infected state (minus eclipse)
+Istate = zeros(UInt16, bacteria) # Count the number of infection in total
+LORstate = falses(bacteria) # boolean, True if it is in Lysis from without resistant state
 
 Bstate[1:(bacteria-infected)] .= rand(1:growth_timer, bacteria-infected)
 Bstate[(bacteria-infected+1):bacteria] .= growth_timer + 1
-bacteriaever = bacteria
 
 println(phage)
 
 # Call the main function
-time, Btimeseries, Itimeseries, Ptimeseries, irecord = simulate_population_agents(
+time, Btimeseries, Itimeseries, Ptimeseries, irecord, lysis_time_record = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
-    bacteria, phage, infected, bacteriaever, carrying_capacity, growth_rate, 
+    bacteria, phage, infected, volume, growth_rate, 
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
     lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
     lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
@@ -223,17 +251,12 @@ time, Btimeseries, Itimeseries, Ptimeseries, irecord = simulate_population_agent
 
 
 phage = 0
-mask = (Bstate .>= 1) .& (Bstate .<= growth_timer)
-
-bacteria = sum(mask)
-mask = (Bstate .>= growth_timer + 1)
-infected = sum(mask)
 final_time = 60 # minutes
 eta=0
 
-time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2 = simulate_population_agents(
+time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, lysis_time_record2 = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
-    bacteria, phage, infected, bacteriaever, carrying_capacity, growth_rate, 
+    bacteria, phage, infected, volume, growth_rate, 
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
     lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
     lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
@@ -241,16 +264,18 @@ time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2 = simulate_population_
     li_collapse=li_collapse, li_collapse_phage=li_collapse_phage
 )
 
+append!(lysis_time_record2, lysis_time_record)
 # Save the data
 
-#@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" time2 Btimeseries2 Itimeseries2 Ptimeseries2 irecord2 Bstate Pstate Istate LORstate time_step record_time_step final_time carrying_capacity growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
-@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
-    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, Bstate, Pstate, Istate, LORstate,
-    time_step, record_time_step, final_time, carrying_capacity, growth_rate, lysis_rate,
-    burst_rate, eclipse, growth_timer, lysis_timer, eta, lysis_inhibition, lysis_inhibition_timer,
-    lysis_from_without, lysis_from_without_phage, lo_resistance, lo_resistance_time,
-    li_collapse, li_collapse_phage
-end
+@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" time2 Btimeseries2 Itimeseries2 Ptimeseries2 irecord2 lysis_time_record2 Bstate Pstate Istate LORstate time_step record_time_step final_time volume growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
+#@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
+#    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, 
+#    Bstate, Pstate, Istate, LORstate, time_step, record_time_step, 
+#    final_time, volume, growth_rate, lysis_rate, burst_rate, 
+#    eclipse, growth_timer, lysis_timer, eta, lysis_inhibition, 
+#    lysis_inhibition_timer, lysis_from_without, lysis_from_without_phage, 
+#    lo_resistance, lo_resistance_time, li_collapse, li_collapse_phage
+#end
 
 # Create the plot
 plot(time2[1:irecord2], Btimeseries2[1:irecord2], label="Bacteria", linewidth=2)
@@ -286,10 +311,8 @@ ylabel!("Difference in Phage Level")
 savefig("phage_difference_plot_lysis_timer($lysis_timer)__MSOI$(msoi).png")
 
 plot(size=(800, 480))
-# Filter out Pstate values that are not zero
-filtered_Pstate = Pstate[Pstate .!= 0]
 
 # Create the histogram
-histogram(filtered_Pstate, bins=30, label="Phage State", xlabel="Pstate", ylabel="Frequency", title="Histogram of Pstate (excluding Pstate=0)")
+histogram(lysis_time_record2, bins=30, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
 
 savefig("Time_To_Lysis_distribution_lysis_timer($lysis_timer)__MSOI$(msoi).png")
