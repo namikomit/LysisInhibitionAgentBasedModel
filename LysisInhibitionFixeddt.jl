@@ -45,21 +45,20 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
     ...
     """
 
-    timenow = 0.0
-    nrecord = Int(round(final_time / record_time_step))
-    time = zeros(nrecord)
-    Btimeseries = zeros(nrecord)
-    Itimeseries = zeros(nrecord)
-    Ptimeseries = zeros(nrecord)
-    irecord = 1
-    time[irecord] = timenow  # Julia arrays are 1-indexed
-    Btimeseries[irecord] = bacteria
-    Itimeseries[irecord] = infected
-    Ptimeseries[irecord] = phage
+    timenow = 0.
+    time = Float64[]
+    Btimeseries = Int[]
+    Itimeseries = Int[]
+    Ptimeseries = Int[]
+    push!(time,timenow)  
+    push!(Btimeseries,bacteria)
+    push!(Itimeseries,infected)
+    push!(Ptimeseries,phage)
     grate = growth_rate * growth_timer
     lrate = lysis_rate * lysis_timer
     lysis_time_record = Float64[]
     println(volume)
+    itime=Int64(0)
     while timenow < final_time
         lo_new_phage=0 
         lysis_new_phage=0
@@ -177,19 +176,18 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
         bacteria=sum(Bstate .>0)
         #println(bacteria, " bacteria ", sum(Bstate .>=0), " sum ", length(Bstate))
         #println("Pstate ", length(Pstate), " Istate ", length(Istate), " LORstate ", length(LORstate))
-
-        timenow += time_step
-        if timenow - time[irecord] >= record_time_step
-            irecord += 1
-            time[irecord] = timenow
-            Btimeseries[irecord] = bacteria
-            Itimeseries[irecord] = sum(Bstate .> growth_timer)
-            Ptimeseries[irecord] = phage
-            println(irecord, " ", time[irecord], " ", Btimeseries[irecord], " ", Itimeseries[irecord], " ", Ptimeseries[irecord])
+        itime+=1
+        timenow = time_step*itime
+        if timenow - time[end] >= record_time_step
+            push!(time,timenow)  
+            push!(Btimeseries,bacteria)
+            push!(Itimeseries,sum(Bstate .> growth_timer))
+            push!(Ptimeseries,phage)
+            println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end])
         end
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, irecord, lysis_time_record
+    return time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record
 end
 
 
@@ -216,7 +214,7 @@ time_step=0.01
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-factor=0.01
+factor=1.0
 volume = factor #ml
 bacteria = Int(round(2e5)) #cells
 infected=Int(round(1e5))
@@ -236,10 +234,16 @@ LORstate = falses(bacteria) # boolean, True if it is in Lysis from without resis
 Bstate[1:(bacteria-infected)] .= rand(1:growth_timer, bacteria-infected)
 Bstate[(bacteria-infected+1):bacteria] .= growth_timer + 1
 
-println(phage)
+
+# Create directories if they do not exist
+data_dir = "data_files"
+figures_dir = "figure_files"
+mkpath(data_dir)
+mkpath(figures_dir)
+
 
 # Call the main function
-time, Btimeseries, Itimeseries, Ptimeseries, irecord, lysis_time_record = simulate_population_agents(
+time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
     bacteria, phage, infected, volume, growth_rate, 
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
@@ -254,7 +258,7 @@ phage = 0
 final_time = 60 # minutes
 eta=0
 
-time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, lysis_time_record2 = simulate_population_agents(
+time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2 = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
     bacteria, phage, infected, volume, growth_rate, 
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
@@ -267,7 +271,8 @@ time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, lysis_time_record2 = 
 append!(lysis_time_record2, lysis_time_record)
 # Save the data
 
-@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" time2 Btimeseries2 Itimeseries2 Ptimeseries2 irecord2 lysis_time_record2 Bstate Pstate Istate LORstate time_step record_time_step final_time volume growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
+data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2")
+@save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 Bstate Pstate Istate LORstate time_step record_time_step final_time volume growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
 #@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
 #    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, 
 #    Bstate, Pstate, Istate, LORstate, time_step, record_time_step, 
@@ -278,9 +283,9 @@ append!(lysis_time_record2, lysis_time_record)
 #end
 
 # Create the plot
-plot(time2[1:irecord2], Btimeseries2[1:irecord2], label="Bacteria", linewidth=2)
-plot!(time2[1:irecord2], Itimeseries2[1:irecord2], label="Infected Bacteria", linewidth=2)
-plot!(time2[1:irecord2], Ptimeseries2[1:irecord2], label="Phage", linewidth=2)
+plot(time2, Btimeseries2, label="Bacteria", linewidth=2)
+plot!(time2, Itimeseries2, label="Infected Bacteria", linewidth=2)
+plot!(time2, Ptimeseries2, label="Phage", linewidth=2)
 
 # Set labels and title
 xlabel!("Time (minutes)")
@@ -290,29 +295,30 @@ title!("Population Dynamics")
 # Show legend
 #plot!(legend=:topright)
 
-
-savefig("population_dynamics_plot_lysis_timer($lysis_timer)_MSOI$(msoi).png")
+figure_file_path = joinpath(figures_dir, "population_dynamics_plot_lysis_timer($lysis_timer)_MSOI$(msoi).pdf")
+savefig(figure_file_path)
 
 
 
 # Calculate the difference in Phage levels
-P_diff = diff(Ptimeseries2[1:irecord2])
+P_diff = diff(Ptimeseries2)
 
 # Create a new figure for the difference plot
 plot(size=(800, 480))
 
 # Plot the difference in Phage levels
-plot!(time2[2:irecord2] .+ 15, P_diff, label="Difference in Phage Level")
+plot!(time2[2:end] .+ 15, P_diff, label="Difference in Phage Level")
 
 # Label the axes
 xlabel!("Time (minutes)")
 ylabel!("Difference in Phage Level")
 
-savefig("phage_difference_plot_lysis_timer($lysis_timer)__MSOI$(msoi).png")
+figure_file_path = joinpath(figures_dir, "phage_difference_plot_lysis_timer($lysis_timer)_MSOI$(msoi).pdf")
+savefig(figure_file_path)
 
 plot(size=(800, 480))
 
 # Create the histogram
 histogram(lysis_time_record2, bins=30, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
-
-savefig("Time_To_Lysis_distribution_lysis_timer($lysis_timer)__MSOI$(msoi).png")
+figure_file_path = joinpath(figures_dir, "lysis_time_histogram_lysis_timer($lysis_timer)_MSOI$(msoi).pdf")
+savefig(figure_file_path)
