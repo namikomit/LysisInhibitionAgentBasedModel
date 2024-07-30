@@ -195,7 +195,7 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
         #println("bacteria", bacteria, timenow, final_time)
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria
+    return time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria, phage
 end
 
 
@@ -252,7 +252,7 @@ mkpath(figures_dir)
 
 
 # Call the main function
-time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria = simulate_population_agents(
+time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
     bacteria, phage, infected, volume, growth_rate, nutrient,
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
@@ -268,7 +268,7 @@ final_time = 60 # minutes
 #eta=0.0
 #println(length(Bstate), length(Pstate), length(Istate), length(LORstate), bacteria)
 
-time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, Bstate, Pstate, Istate, LORstate, bacteria = simulate_population_agents(
+time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
     bacteria, phage, infected, volume, growth_rate, nutrient,
     lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
