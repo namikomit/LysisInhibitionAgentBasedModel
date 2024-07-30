@@ -228,10 +228,8 @@ nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it
 bacteria = Int(round(2e7*volume)) #cells
 infected=Int(round(1e7*volume))
 si_duration=3. #minutes
-msoi=7.6 #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
+msoi=0. #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
 P0 = msoi * (eta * ((bacteria) / volume)^2) / (1 - exp(-eta * Float64(bacteria) / volume * si_duration))
-phage = Int(round(P0 * volume)) # pfu
-print(phage)
 si_time = 15. # minutes
 final_time = si_time # minutes
 
@@ -251,8 +249,21 @@ figures_dir = "figure_files"
 mkpath(data_dir)
 mkpath(figures_dir)
 
-
+phage =0 
 # Call the main function
+time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
+    Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
+    bacteria, phage, infected, volume, growth_rate, nutrient,
+    lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+    lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
+    lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
+    lo_resistance=lo_resistance, lo_resistance_time=lo_resistance_time, 
+    li_collapse=li_collapse, li_collapse_phage=li_collapse_phage
+)
+
+phage = Int(round(P0 * volume)) # pfu
+print(phage)
+final_time = si_duration     #minutes
 time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
     bacteria, phage, infected, volume, growth_rate, nutrient,
@@ -318,7 +329,7 @@ P_diff = diff(Ptimeseries2)
 plot(size=(800, 480))
 
 # Plot the difference in Phage levels
-plot!(time2[2:end] .+ 15, P_diff, label="Difference in Phage Level")
+plot!(time2[2:end] .+ 18, P_diff, label="Difference in Phage Level")
 
 # Label the axes
 xlabel!("Time (minutes)")
