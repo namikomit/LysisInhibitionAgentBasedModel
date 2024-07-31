@@ -9,6 +9,7 @@ using JLD2
 
 
 # Main function
+#This is not done. lysis inhibition collapse and lo resistance is not properly implemented. Also, the lysis inhibition amount should depends on numebr of infecting phage per time step. 
 function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, bacteria, phage, infected, volume, 
     growth_rate, nutrient, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
     lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_time=5, li_collapse=false, li_collapse_phage=100)

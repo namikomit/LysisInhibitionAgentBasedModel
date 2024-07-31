@@ -83,14 +83,24 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                     states[i].Bstate = growth_timer+1   
                 end 
                 if lysis_from_without
-                    #println("lysis from without")
+                    
                     #The lysis from without can happen
                     check_LO = !states[i].LORstate * states[i].Istate  #If true for LOR state, Istate will be multiplied by 0. 
                     if check_LO > lysis_from_without_phage
+                        #println("lysis from without")
                         states[i].Bstate = 0
                         lo_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                         # Append the values of Pstate that match mask_LO to lysis_time_record
                         append!(lysis_time_record, states[i].Pstate)                     
+                    end
+                end
+                if li_collapse
+                    if states[i].Istate > li_collapse_phage
+                        #println("lysis inhibition collapse")
+                        states[i].Bstate = 0
+                        lo_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                        # Append the values of Pstate that match mask_LI to lysis_time_record
+                        append!(lysis_time_record, states[i].Pstate)
                     end
                 end
                 if lysis_inhibition
@@ -105,7 +115,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                         check_LI = false
                     end
                     if check_LI
-                        states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer)
+                        states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer*phageinfect_array[i])
                     end    
                 end
             end
@@ -125,7 +135,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                 #lysis actions
                 # Add time_step to all masked elements of Pstate
                 states[i].Pstate += time_step
-                if lo_resistance
+                if lo_resistance & !states[i].LORstate
                     states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
                 end
                 states[i].Bstate += random_numbers[i] < (lrate * time_step)
@@ -180,34 +190,34 @@ end
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
 growth_rate = 2.0/60. #per minute
-lysis_rate = 1.0/27.0  #per minute
+lysis_rate = 1.0/25.0  #per minute
 growth_timer = 10 #max growth timer
-lysis_timer = 1000 #max lysis timer
+lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
 burst_size = 100 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
-eta = 5e-9  #adsorption rate per ml/min
+eta = 5e-10  #adsorption rate per ml/min
 lysis_inhibition=true
 lysis_inhibition_timer=50
 lysis_from_without=true
-lysis_from_without_phage=5
+lysis_from_without_phage=10
 lo_resistance=true
-lo_resistance_timer=150
+lo_resistance_timer=4*5
 li_collapse=true
-li_collapse_phage=40
-time_step=0.01
+li_collapse_phage=100
+time_step=0.1
 
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-culture_growth=false
+culture_growth=true
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 if culture_growth
-    volume = 0.002 #ml
+    volume = 0.01 #ml
     nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
-    bacteria = Int(round(1e8*volume)) #cells
+    bacteria = Int(round(1e7*volume)) #cells
     infected= 0
-    final_time = 3*60 # minutes
+    final_time = 7*60 # minutes
     phage = Int(round(1e6*volume)) # pfu
     # Generate random values
     initial_values = rand(1:growth_timer, bacteria-infected)
@@ -250,9 +260,9 @@ if culture_growth
     time_P, Ptimeseries_filtered = filter_positive(time, Ptimeseries/volume)
 
     # Create the plot with log scale on y-axis
-    plot(time_B, Btimeseries_filtered, label="Bacteria", linewidth=2, yscale=:log10)
+    plot(time_B, Btimeseries_filtered, label="Bacteria", linewidth=2) #, yscale=:log10)
     plot!(time_I, Itimeseries_filtered, label="Infected Bacteria", linewidth=2)
-    plot!(time_P, Ptimeseries_filtered, label="Phage", linewidth=2)
+    #plot!(time_P, Ptimeseries_filtered, label="Phage", linewidth=2)
 
     # Set labels and title
     xlabel!("Time (minutes)")
