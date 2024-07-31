@@ -7,6 +7,14 @@ using Distributions
 using JLD2
 
 
+#I will now try to create a struct
+mutable struct State
+    Bstate::UInt16 # 1 to growth_timer is uninfected, growth_timer+1 to growth_timer+lysis_timer is infected
+    # assign a random integer number between 1 and growth_timer to each bacteria
+    Istate::UInt16  # Count the number of infection in total
+    Pstate::Float64 # recording time spent in infected state, to compute number of produced phages for an infected bacteria, proportional to time spent in infected state (minus eclipse)
+    LORstate::Bool # boolean, True if it is in Lysis from without resistant state
+end
 
 # Main function
 function simulate_population_agents(states::Vector{State}, time_step, record_time_step, final_time, bacteria, phage, infected, volume, 
@@ -66,8 +74,8 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
         phageinfect_array= rand(Poisson(eta*phage/volume*time_step), bacteria)
         random_numbers = rand(bacteria)
         for i in 1:bacteria
-            #println("phage infection")
-            if pahgeinfect_array[i] > 0
+            #println("phage infection", phageinfect_array[i])
+            if phageinfect_array[i] > 0
                 #Only execute the infection actions when it actually hallens!
                 states[i].Istate += phageinfect_array[i]
                 if states[i].Bstate <= growth_timer
@@ -79,7 +87,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                     #The lysis from without can happen
                     check_LO = !states[i].LORstate * states[i].Istate  #If true for LOR state, Istate will be multiplied by 0. 
                     if check_LO > lysis_from_without_phage
-                        state[i].Bstate = 0
+                        states[i].Bstate = 0
                         lo_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                         # Append the values of Pstate that match mask_LO to lysis_time_record
                         append!(lysis_time_record, states[i].Pstate)                     
@@ -103,30 +111,30 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
             end
             # Update Bstate elements less than growth_timer with probability grate * time_step
             #println("growth")
-            if state[i].Bstate < growth_timer
-                state[i].Bstate += random_numbers[i] < (grate * time_step)
-            elseif state[i].Bstate == growth_timer
+            if states[i].Bstate < growth_timer
+                states[i].Bstate += random_numbers[i] < (grate * time_step)
+            elseif states[i].Bstate == growth_timer
                 if random_numbers[i] < (grate * time_step)
                     #println("new bacteria")    
                     new_bacteria += 1
-                    state[i].Bstate = 1
+                    states[i].Bstate = 1
                 end
             # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
             #println("lysis")
-            elseif state[i].Bstate < growth_timer + lysis_timer
+            elseif states[i].Bstate < growth_timer + lysis_timer
                 #lysis actions
                 # Add time_step to all masked elements of Pstate
                 states[i].Pstate += time_step
                 if lo_resistance
                     states[i].LORstate = states[i].Pstate > lo_resistance_time
                 end
-                state[i].Bstate += random_numbers[i] < (lrate * time_step)
-            elseif state[i].Bstate == growth_timer + lysis_timer
+                states[i].Bstate += random_numbers[i] < (lrate * time_step)
+            elseif states[i].Bstate == growth_timer + lysis_timer
                 if random_numbers[i] < (lrate * time_step)
-                    state[i].Bstate = 0
-                    lysis_new_phage += max(Int(round(burst_rate * (state[i].Pstate - eclipse))), 0)
+                    states[i].Bstate = 0
+                    lysis_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                     # Append the values of Pstate that match mask_lysis to lysis_time_record
-                    append!(lysis_time_record, state[i].Pstate)
+                    append!(lysis_time_record, states[i].Pstate)
                 end 
             end 
         end
@@ -137,7 +145,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
         phage += lo_new_phage + lysis_new_phage
         phage=max(0,phage-sum(phageinfect_array))
         # Filter out elements for no cell
-        filter!(state -> state.Bstate != 0, states)
+        filter!(states -> states.Bstate != 0, states)
         if new_bacteria>0
         #Add the new bacteria, number new_bacteria
             for _ in 1:new_bacteria
@@ -204,26 +212,11 @@ si_time = 15. # minutes
 final_time = si_time # minutes
 
 
-#I will now try to create a struct
-struct State
-    Bstate::UInt16 # 1 to growth_timer is uninfected, growth_timer+1 to growth_timer+lysis_timer is infected
-    # assign a random integer number between 1 and growth_timer to each bacteria
-    Istate::UInt16  # Count the number of infection in total
-    Pstate::Float64 # recording time spent in infected state, to compute number of produced phages for an infected bacteria, proportional to time spent in infected state (minus eclipse)
-    LORstate::Bool # boolean, True if it is in Lysis from without resistant state
-end
-
-#make it into an array with default values
-states = [State(0, 0, 0.0, false) for _ in 1:bacteria]
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria-infected)
-    
-# Assign the random values to the Bstate field of each State struct
-for i in 1:(bacteria-infected)
-    states[i].Bstate = initial_values[i]
-end
-for i in (bacteria-infected+1):bacteria
-    states[i].Bstate = growth_timer + 1
+append!(initial_values, [growth_timer + 1 for _ in 1:infected])
+#make it into an array with default values
+states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
 
 
 # Create directories if they do not exist
@@ -277,7 +270,7 @@ append!(lysis_time_record2, lysis_time_record)
 # Save the data
 
 data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2")
-@save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 Bstate Pstate Istate LORstate time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
+@save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 states time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_time li_collapse li_collapse_phage
 #@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
 #    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, 
 #    Bstate, Pstate, Istate, LORstate, time_step, record_time_step, 
