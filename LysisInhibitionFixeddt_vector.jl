@@ -108,17 +108,18 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
         end
         # Update Bstate elements less than growth_timer with probability grate * time_step
         #println("growth")
-        mask_Bstate = Bstate .< growth_timer
+        mask_Bstateg = Bstate .< growth_timer
+        mask_Bstated = Bstate .== growth_timer
         random_numbers = rand(length(Bstate))
-        if any(mask_Bstate)
-            Bstate[mask_Bstate] .= Bstate[mask_Bstate] .+ (random_numbers[mask_Bstate] .< (grate * time_step))
+        if any(mask_Bstateg)
+            Bstate[mask_Bstateg] .= Bstate[mask_Bstateg] .+ (random_numbers[mask_Bstateg] .< (grate * time_step))
         end
         # Update Bstate elements equal to growth_timer with probability grate * time_step
         #println("new bacteria")
-        mask_Bstate = Bstate .== growth_timer
+
         #I can use the random numbers above since they were not used for this mask
-        if any(mask_Bstate)
-            mask_grow = mask_Bstate .& (random_numbers .< (grate * time_step))
+        if any(mask_Bstated)
+            mask_grow = mask_Bstated .& (random_numbers .< (grate * time_step))
             if any(mask_grow)
                 new_bacteria = sum(mask_grow)
                 Bstate[mask_grow] .= 1
@@ -126,26 +127,24 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
         end
         # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
         #println("lysis")
-        mask_Bstate = Bstate .< growth_timer+lysis_timer
+        mask_Bstatel = (Bstate .> growth_timer) .& (Bstate .< growth_timer + lysis_timer)
+        mask_Bstateb = Bstate .== growth_timer + lysis_timer
         #lysis actions
         # Add time_step to all masked elements of Pstate
-        if any(mask_Bstate)
-            Pstate[mask_Bstate] .+= time_step   
+        if any(mask_Bstatel)
+            Pstate[mask_Bstatel] .+= time_step   
             if lo_resistance
-                LORstate[mask_Bstate] .= (Pstate[mask_Bstate] > lo_resistance_time)
+                LORstate[mask_Bstatel] .= (Pstate[mask_Bstatel] > lo_resistance_time)
             end 
+            # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
+            Bstate[mask_Bstatel] .= Bstate[mask_Bstatel] .+ (random_numbers[mask_Bstate] .< (lrate * time_step)) 
         end                   
-        # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
-        mask_Bstate = (Bstate .> growth_timer) .& (Bstate .< growth_timer + lysis_timer)
-        if any(mask_Bstate)
-            Bstate[mask_Bstate] .= Bstate[mask_Bstate] .+ (random_numbers[mask_Bstate] .< (lrate * time_step)) 
-        end      
         # Update Bstate elements equal to growth_timer + lysis_timer with probability lrate * time_step
-        #println("lysis new phage")
-        mask_Bstate = Bstate .== growth_timer + lysis_timer
-        if any(mask_Bstate)
+        #println("lysis new phage")        
+
+        if any(mask_Bstateb)
             #println("lysis new phage mask_Bstate")
-            mask_lysis = mask_Bstate .& (random_numbers .< lrate * time_step)
+            mask_lysis = mask_Bstateb .& (random_numbers .< lrate * time_step)
             if any(mask_lysis)
                 Bstate[mask_lysis] .= 0
                 #println("lysis size")
