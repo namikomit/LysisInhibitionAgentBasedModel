@@ -149,7 +149,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
         if new_bacteria>0
         #Add the new bacteria, number new_bacteria
             for _ in 1:new_bacteria
-                states = append!(states, State(1, 0, 0.0, false))
+                states = push!(states, State(1, 0, 0.0, false))
             end
         end
         bacteria=length(states)
@@ -179,7 +179,7 @@ end
 
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
-growth_rate = 0. #2.0/60. #per minute
+growth_rate = 2.0/60. #per minute
 lysis_rate = 1.0/23.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 60 #max lysis timer
@@ -220,8 +220,8 @@ states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
 
 
 # Create directories if they do not exist
-data_dir = "data_files_struct"
-figures_dir = "figure_files_struct"
+data_dir = "data_files_struct_growth"
+figures_dir = "figure_files_struct_growth"
 mkpath(data_dir)
 mkpath(figures_dir)
 
@@ -253,7 +253,7 @@ time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria
 
 phage = 0
 final_time = 60 # minutes
-eta=0.0
+#eta=0.0
 #println(length(Bstate), length(Pstate), length(Istate), length(LORstate), bacteria)
 
 time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
