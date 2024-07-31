@@ -200,7 +200,7 @@ end
 
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
-growth_rate = 0. #2.0/60. #per minute
+growth_rate = 2.0/60. #per minute
 lysis_rate = 1.0/23.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 60 #max lysis timer
@@ -222,7 +222,7 @@ time_step=0.01
 record_time_step = 1 #minutes
 
 
-volume = 0.01 #ml
+volume = .1 #ml
 nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
 bacteria = Int(round(2e7*volume)) #cells
 infected=Int(round(1e7*volume))
@@ -243,13 +243,14 @@ Bstate[(bacteria-infected+1):bacteria] .= growth_timer + 1
 
 
 # Create directories if they do not exist
-data_dir = "data_files"
-figures_dir = "figure_files"
+data_dir = "data_files_vector_growth"
+figures_dir = "figure_files_vector_growth"
 mkpath(data_dir)
 mkpath(figures_dir)
 
 phage =0 
 # Call the main function
+
 time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
     Bstate, Pstate, Istate, LORstate, time_step, record_time_step, final_time, 
     bacteria, phage, infected, volume, growth_rate, nutrient,
@@ -260,6 +261,7 @@ time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, 
     li_collapse=li_collapse, li_collapse_phage=li_collapse_phage
 )
 
+#33.756739 seconds (2.40 M allocations: 79.383 GiB, 3.11% gc time, 3.41% compilation time)
 phage = Int(round(P0 * volume)) # pfu
 print(phage)
 final_time = si_duration     #minutes
@@ -276,7 +278,7 @@ time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, Bstate, Pstate, 
 
 phage = 0
 final_time = 60 # minutes
-eta=0.0
+#eta=0.0
 #println(length(Bstate), length(Pstate), length(Istate), length(LORstate), bacteria)
 
 time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, Bstate, Pstate, Istate, LORstate, bacteria, phage = simulate_population_agents(
