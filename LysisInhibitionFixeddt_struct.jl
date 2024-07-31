@@ -227,8 +227,8 @@ for i in (bacteria-infected+1):bacteria
 
 
 # Create directories if they do not exist
-data_dir = "data_files"
-figures_dir = "figure_files"
+data_dir = "data_files_struct"
+figures_dir = "figure_files_struct"
 mkpath(data_dir)
 mkpath(figures_dir)
 

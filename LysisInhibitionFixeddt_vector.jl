@@ -137,7 +137,7 @@ function simulate_population_agents(Bstate, Pstate, Istate, LORstate, time_step,
                 LORstate[mask_Bstatel] .= (Pstate[mask_Bstatel] > lo_resistance_time)
             end 
             # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
-            Bstate[mask_Bstatel] .= Bstate[mask_Bstatel] .+ (random_numbers[mask_Bstate] .< (lrate * time_step)) 
+            Bstate[mask_Bstatel] .= Bstate[mask_Bstatel] .+ (random_numbers[mask_Bstatel] .< (lrate * time_step)) 
         end                   
         # Update Bstate elements equal to growth_timer + lysis_timer with probability lrate * time_step
         #println("lysis new phage")        
@@ -227,7 +227,7 @@ nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it
 bacteria = Int(round(2e7*volume)) #cells
 infected=Int(round(1e7*volume))
 si_duration=3. #minutes
-msoi=0. #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
+msoi=7.6 #"=P_0(1-exp(-eta*B*si_duration))/(eta*B^2)"
 P0 = msoi * (eta * ((bacteria) / volume)^2) / (1 - exp(-eta * Float64(bacteria) / volume * si_duration))
 si_time = 15. # minutes
 final_time = si_time # minutes
