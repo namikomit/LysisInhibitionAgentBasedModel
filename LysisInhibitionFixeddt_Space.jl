@@ -69,6 +69,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
 
     timenow = 0.
     lattice_size=length(states)
+    println("lattice size: ", lattice_size)
     grate = growth_rate * growth_timer
     lrate = lysis_rate * lysis_timer
     lysis_time_record = Float64[]
@@ -100,9 +101,10 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
         for i in 1:lattice_size
             states[i].Phage = new_Phage[i]
         end
-        for j in 1:lattice_size
+        for _ in 1:lattice_size
             i = rand(1:lattice_size)
             if states[i].Bstate > 0
+                #println("i: ", i)
                 phageinfect= rand(Poisson(eta*states[i].Phage*time_step))   
                 #println("phage infection", phageinfect)
                 if phageinfect> 0
@@ -159,6 +161,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                     states[i].Bstate += rand()< (grate * time_step)
                 elseif states[i].Bstate == growth_timer
                     if rand() < (grate * time_step)
+                        println("new bacteria")
                         #println("new bacteria")    
                         #Now the new bacteria needs to push the other phage. Also I should introduce the pushing distance. 
                         jp = false
@@ -169,6 +172,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                         for k in 1:push_distance
                             jp=custom_mod(i+k, lattice_size)
                             jm=custom_mod(i-k+lattice_size, lattice_size)
+                            #println("jp: ", jp, "jm: ", jm, "state ",states[jp].Bstate, " ",states[jm].Bstate)
                             if states[jp].Bstate == 0
                                 ip=true
                             end
@@ -196,12 +200,24 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             end
                         end
                         if jj>0
-                            #there is a place to push
+                            #there is a place to push. 
+                            #for the furthest site, I need to make sure phage is not overridden. 
                             states[i].Bstate = 1
-                            for kk in 1:k_now
-                                jk=custom_mod(jj-(jsign*(kk-1))+lattice_size, lattice_size)
-                                jk1=custom_mod(jj-(jsign*kk)+lattice_size, lattice_size)
-                                states[jk] = states[jk1]
+                            jk1=custom_mod(jj-(jsign)+lattice_size, lattice_size)
+                            states[jj].Bstate = states[jk1].Bstate
+                            states[jj].Istate = states[jk1].Istate
+                            states[jj].Pstate = states[jk1].Pstate
+                            states[jj].LORstate = states[jk1].LORstate
+                            states[jj].Phage += states[jk1].Phage
+                            if k_now >1
+                                for kk in 2:k_now
+                                    jk=jk1
+                                    jk1=custom_mod(jj-(jsign*kk)+lattice_size, lattice_size)
+                                    states[jk] = states[jk1]
+                                end
+                            end
+                            if jk1!=i
+                                println("error")
                             end
                             states[i]=SState(1, 0, 0.0, false, 0)
                         end 
@@ -286,12 +302,12 @@ culture_growth=true
 lattice_size=1000
 bacteria = 100 #cells
 infected= 0
-final_time = 5*60 # minutes
+final_time = 60 # minutes
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria)
 states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
 for i in 1:bacteria
-    states[Int(lattice_size/2-bacteria/2)+i].Bstate = rand(1:growth_timer)
+    states[Int(lattice_size/2-bacteria/2)+i].Bstate = growth_timer #rand(1:growth_timer)
 end
 #states[Int(lattice_size/2-bacteria/2)].Phage = 1
 #states[Int(lattice_size/2+bacteria/2)+1].Phage = 1
