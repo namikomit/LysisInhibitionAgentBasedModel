@@ -102,127 +102,129 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
         end
         for j in 1:lattice_size
             i = rand(1:lattice_size)
-            phageinfect= rand(Poisson(eta*states[i].Phage*time_step))   
-            #println("phage infection", phageinfect)
-            if phageinfect> 0
-                #Only execute the infection actions when it actually hallens!
-                states[i].Istate += phageinfect
-                states[i].Phage = max(0, states[i].Phage - phageinfect)
-                if states[i].Bstate <= growth_timer
-                #first time infection
-                    states[i].Bstate = growth_timer+1   
-                end 
-                if lysis_from_without
+            if states[i].Bstate > 0
+                phageinfect= rand(Poisson(eta*states[i].Phage*time_step))   
+                #println("phage infection", phageinfect)
+                if phageinfect> 0
+                    #Only execute the infection actions when it actually hallens!
+                    states[i].Istate += phageinfect
+                    states[i].Phage = max(0, states[i].Phage - phageinfect)
+                    if states[i].Bstate <= growth_timer
+                    #first time infection
+                        states[i].Bstate = growth_timer+1   
+                    end 
+                    if lysis_from_without
                     
-                    #The lysis from without can happen
-                    check_LO = !states[i].LORstate * states[i].Istate  #If true for LOR state, Istate will be multiplied by 0. 
-                    if check_LO > lysis_from_without_phage
-                        #println("lysis from without")
-                        states[i].Bstate = 0
-                        states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
-                        # Append the values of Pstate that match mask_LO to lysis_time_record
-                        append!(lysis_time_record, states[i].Pstate)                     
-                    end
-                end
-                if li_collapse
-                    if states[i].Istate > li_collapse_phage
-                        #println("lysis inhibition collapse")
-                        states[i].Bstate = 0
-                        states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
-                        # Append the values of Pstate that match mask_LI to lysis_time_record
-                        append!(lysis_time_record, states[i].Pstate)
-                    end
-                end
-                if lysis_inhibition
-                    #println("lysis inhibition")
-                    check_LI = true
-                    if  lo_resistance & !states[i].LORstate
-                        #if LOR can happen, then the lysis inhibition should start only after LOR is established
-                        check_LI = false
-                    end
-                    #The lysis inhibition can happen, but only the ones that did not do lysis from without 
-                    if states[i].Bstate == 0
-                        check_LI = false
-                    end
-                    if check_LI
-                        states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer*phageinfect)
-                    end    
-                end
-            end
-            if li_collapse_recovery && states[i].LORstate
-                states[i].Istate = max(0,states[i].Istate - rand(Poisson(states[i].Istate*licR_rate*time_step)))
-            end
-            # Update Bstate elements less than growth_timer with probability grate * time_step
-            #println("growth")
-            if states[i].Bstate < growth_timer
-                states[i].Bstate += rand()< (grate * time_step)
-            elseif states[i].Bstate == growth_timer
-                if rand() < (grate * time_step)
-                    #println("new bacteria")    
-                    #Now the new bacteria needs to push the other phage. Also I should introduce the pushing distance. 
-                    jp = false
-                    jm = false
-                    jj=0
-                    k_now=0
-                    jsign=0
-                    for k in 1:push_distance
-                        jp=custom_mod(i+k, lattice_size)
-                        jm=custom_mod(i-k+lattice_size, lattice_size)
-                        if states[jp].Bstate == 0
-                            ip=true
+                        #The lysis from without can happen
+                        check_LO = !states[i].LORstate * states[i].Istate  #If true for LOR state, Istate will be multiplied by 0. 
+                        if check_LO > lysis_from_without_phage
+                            #println("lysis from without")
+                            states[i].Bstate = 0
+                            states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                            #Append the values of Pstate that match mask_LO to lysis_time_record
+                            append!(lysis_time_record, states[i].Pstate)                     
                         end
-                        if states[jm].Bstate ==0
-                            im=true
+                    end
+                    if li_collapse
+                        if states[i].Istate > li_collapse_phage
+                            #println("lysis inhibition collapse")
+                            states[i].Bstate = 0
+                            states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                            # Append the values of Pstate that match mask_LI to lysis_time_record
+                            append!(lysis_time_record, states[i].Pstate)
                         end
-                        if ip || im
-                            if ip&&im
-                                if rand(0:1)==0
+                    end
+                    if lysis_inhibition
+                        #println("lysis inhibition")
+                        check_LI = true
+                        if  lo_resistance & !states[i].LORstate
+                            #if LOR can happen, then the lysis inhibition should start only after LOR is established
+                            check_LI = false
+                        end
+                        #The lysis inhibition can happen, but only the ones that did not do lysis from without 
+                        if states[i].Bstate == 0
+                            check_LI = false
+                        end
+                        if check_LI
+                            states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer*phageinfect)
+                        end    
+                    end
+                end
+                if li_collapse_recovery && states[i].LORstate
+                    states[i].Istate = max(0,states[i].Istate - rand(Poisson(states[i].Istate*licR_rate*time_step)))
+                end
+                # Update Bstate elements less than growth_timer with probability grate * time_step
+                #println("growth")
+                if states[i].Bstate < growth_timer
+                    states[i].Bstate += rand()< (grate * time_step)
+                elseif states[i].Bstate == growth_timer
+                    if rand() < (grate * time_step)
+                        #println("new bacteria")    
+                        #Now the new bacteria needs to push the other phage. Also I should introduce the pushing distance. 
+                        jp = false
+                        jm = false
+                        jj=0
+                        k_now=0
+                        jsign=0
+                        for k in 1:push_distance
+                            jp=custom_mod(i+k, lattice_size)
+                            jm=custom_mod(i-k+lattice_size, lattice_size)
+                            if states[jp].Bstate == 0
+                                ip=true
+                            end
+                            if states[jm].Bstate ==0
+                                im=true
+                            end
+                            if ip || im
+                                if ip&&im
+                                    if rand(0:1)==0
+                                        jj=jp
+                                        jsign=1
+                                    else    
+                                        jj=jm
+                                        jsign=-1
+                                    end
+                                elseif ip
                                     jj=jp
                                     jsign=1
-                                else    
+                                else
                                     jj=jm
                                     jsign=-1
                                 end
-                            elseif ip
-                                jj=jp
-                                jsign=1
-                            else
-                                jj=jm
-                                jsign=-1
+                                k_now=k
+                                break
                             end
-                            k_now=k
-                            break
                         end
+                        if jj>0
+                            #there is a place to push
+                            states[i].Bstate = 1
+                            for kk in 1:k_now
+                                jk=custom_mod(jj-(jsign*(kk-1))+lattice_size, lattice_size)
+                                jk1=custom_mod(jj-(jsign*kk)+lattice_size, lattice_size)
+                                states[jk] = states[jk1]
+                            end
+                            states[i]=SState(1, 0, 0.0, false, 0)
+                        end 
                     end
-                    if jj>0
-                        #there is a place to push
-                        states[i].Bstate = 1
-                        for kk in 1:k_now
-                            jk=custom_mod(jj-(jsign*(kk-1))+lattice_size, lattice_size)
-                            jk1=custom_mod(jj-(jsign*kk)+lattice_size, lattice_size)
-                            states[jk] = states[jk1]
-                        end
-                        states[i]=SState(1, 0, 0.0, false, 0)
+                # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
+                #println("lysis")
+                elseif states[i].Bstate < growth_timer + lysis_timer
+                    #lysis actions
+                    # Add time_step to all masked elements of Pstate
+                    states[i].Pstate += time_step
+                    if lo_resistance & !states[i].LORstate
+                        states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
+                    end
+                    states[i].Bstate += rand() < (lrate * time_step)
+                elseif states[i].Bstate == growth_timer + lysis_timer
+                    if rand() < (lrate * time_step)
+                        states[i].Bstate = 0
+                        states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                        # Append the values of Pstate that match mask_lysis to lysis_time_record
+                        append!(lysis_time_record, states[i].Pstate)
                     end 
-                end
-            # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
-            #println("lysis")
-            elseif states[i].Bstate < growth_timer + lysis_timer
-                #lysis actions
-                # Add time_step to all masked elements of Pstate
-                states[i].Pstate += time_step
-                if lo_resistance & !states[i].LORstate
-                    states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
-                end
-                states[i].Bstate += rand() < (lrate * time_step)
-            elseif states[i].Bstate == growth_timer + lysis_timer
-                if rand() < (lrate * time_step)
-                    states[i].Bstate = 0
-                    states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
-                    # Append the values of Pstate that match mask_lysis to lysis_time_record
-                    append!(lysis_time_record, states[i].Pstate)
                 end 
-            end 
+            end
         end
 
 
@@ -281,8 +283,8 @@ record_time_step = 1 #minutes
 
 culture_growth=true
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
-lattice_size=100
-bacteria = 10 #cells
+lattice_size=1000
+bacteria = 100 #cells
 infected= 0
 final_time = 5*60 # minutes
 # Generate random values
