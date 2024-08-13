@@ -15,7 +15,7 @@ mutable struct SState
     Istate::UInt32  # Count the number of infection in total
     Pstate::Float64 # recording time spent in infected state, to compute number of produced phages for an infected bacteria, proportional to time spent in infected state (minus eclipse)
     LORstate::Bool # boolean, True if it is in Lysis from without resistant state
-    Phage::UInt32 # number of phages at the site
+    Phage::Int64 # number of phages at the site
 end
 
 function custom_mod(i, lattice_size)
@@ -72,6 +72,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     println("lattice size: ", lattice_size)
     grate = growth_rate * growth_timer
     lrate = lysis_rate * lysis_timer
+    probhop = hop_rate * time_step
     lysis_time_record = Float64[]
     itime=Int64(0)
     new_Phage = zeros(Int32, lattice_size)
@@ -87,15 +88,11 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
         for i in 1:lattice_size
             jp=custom_mod(i+1, lattice_size)
             jm=custom_mod(i-1+lattice_size, lattice_size)
-            for _ in 1:states[i].Phage
-                r = rand()
-                if r < hop_rate*time_step
-                    new_Phage[jp] += 1  # Hop to the right
-                elseif r < 2*hop_rate*time_step
-                    new_Phage[jm] += 1  # Hop to the left
-                else
-                    new_Phage[i] += 1  # Stay in the same position
-                end
+            if states[i].Phage > 0
+                r = rand(Multinomial(states[i].Phage, [probhop, probhop, 1-2*probhop]))
+                new_Phage[jp] += r[1]  # Hop to the right
+                new_Phage[jm] += r[2]  # Hop to the left
+                new_Phage[i] += r[3]  # Stay in the same position
             end 
         end
         for i in 1:lattice_size
@@ -161,11 +158,10 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                     states[i].Bstate += rand()< (grate * time_step)
                 elseif states[i].Bstate == growth_timer
                     if rand() < (grate * time_step)
-                        println("new bacteria")
                         #println("new bacteria")    
                         #Now the new bacteria needs to push the other phage. Also I should introduce the pushing distance. 
-                        jp = false
-                        jm = false
+                        ip = false
+                        im = false
                         jj=0
                         k_now=0
                         jsign=0
@@ -264,6 +260,25 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     return time, Btimeseries, Itimeseries, Ptimeseries, Phagetimeseries, lysis_time_record, states
 end
 
+function custom_color_profile(value, growth_timer, lysis_timer)
+    if value == 0
+        return RGB(0, 0, 0)  # Black
+    elseif value <= growth_timer
+        blue_intensity = value / growth_timer
+        return RGB(0, 0, blue_intensity)  # Blue, getting brighter
+    elseif value <= growth_timer + lysis_timer
+        yellow_intensity = (value - growth_timer) / lysis_timer
+        #return RGB(yellow_intensity, yellow_intensity, yellow_intensity)  # Yellow, getting brighter
+        return RGB(1, 1, 0)  # Yellow
+    else
+        return RGB(1, 1, 1)  # White for values beyond the specified range
+    end
+end
+
+function apply_custom_colormap(Btimeseries_2d, growth_timer, lysis_timer)
+    heatmap_colors = [custom_color_profile(value, growth_timer, lysis_timer) for value in Btimeseries_2d]
+    heatmap(heatmap_colors, color=:auto)
+end
 
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
@@ -274,7 +289,7 @@ lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
 burst_size = 100 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
-eta = 1  #adsorption rate per ml/min
+eta = 1  #adsorption rate per box
 lysis_inhibition=true
 lysis_inhibition_timer=4*10
 lysis_from_without=true
@@ -287,7 +302,7 @@ li_collapse_recovery= true
 licR_rate=1.0/300.0
 li_collapse_phage=40
 time_step=0.1
-push_distance=10
+push_distance=15
 hop_rate=1
 if(time_step*hop_rate>0.5)
     println("Hop rate is too high")
@@ -295,22 +310,22 @@ end
 
 
 #Now set the initial condition and run the simulation. 
-record_time_step = 1 #minutes
+record_time_step = 30 #minutes
 
 culture_growth=true
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 lattice_size=1000
-bacteria = 100 #cells
+bacteria = 200 #cells
 infected= 0
-final_time = 60 # minutes
+final_time = record_time_step*100 # minutes
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria)
 states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
 for i in 1:bacteria
     states[Int(lattice_size/2-bacteria/2)+i].Bstate = growth_timer #rand(1:growth_timer)
 end
-#states[Int(lattice_size/2-bacteria/2)].Phage = 1
-#states[Int(lattice_size/2+bacteria/2)+1].Phage = 1
+states[Int(lattice_size/2-bacteria/2)].Phage = 1
+states[Int(lattice_size/2+bacteria/2)+1].Phage = 1
     # Create directories if they do not exist
 data_dir = "data_files_space"
 figures_dir = "figure_files_space"
@@ -339,16 +354,23 @@ Btimeseries_2d = hcat(Btimeseries...)'
 # Print the type and size of the new 2D array
 println("Type of Btimeseries_2d: ", typeof(Btimeseries_2d))
 println("Size of Btimeseries_2d: ", size(Btimeseries_2d))
+# Find the maximum value in Btimeseries_2d
+max_value = maximum(Btimeseries_2d)
 
+# Print the maximum value
+println("Maximum value in Btimeseries_2d: ", max_value)
 
 # Assuming Btimeseries_2d is your 2D array of 0 and positive integers
-binary_Btimeseries_2d = Btimeseries_2d .> 0
+#binary_Btimeseries_2d = Btimeseries_2d .> 0
 
 # Convert the boolean array to an integer array
-binary_Btimeseries_2d = Int.(binary_Btimeseries_2d)
-custom_colors = cgrad([:black, :yellow], [0, 1])
+#binary_Btimeseries_2d = Int.(binary_Btimeseries_2d)
+#custom_colors = cgrad([:black, :yellow], [0, 1])
 
-heatmap(binary_Btimeseries_2d, color=custom_colors, xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
+#heatmap(binary_Btimeseries_2d, color=custom_colors, xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
+
+#heatmap(Btimeseries_2d,  xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
+apply_custom_colormap(Btimeseries_2d, growth_timer, lysis_timer)
 
 # Save the heatmap to a file
 figure_file_path = joinpath(figures_dir, "Btimeseries_heatmap_lysis_timer($lysis_timer).pdf")
