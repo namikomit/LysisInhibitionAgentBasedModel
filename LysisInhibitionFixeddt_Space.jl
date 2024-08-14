@@ -65,7 +65,9 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     Btimeseries = []
     Itimeseries = []
     Ptimeseries = []
+    LORtimeseries = []
     Phagetimeseries = []
+    totalLO=0
 
     timenow = 0.
     lattice_size=length(states)
@@ -81,6 +83,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     push!(Btimeseries, [state.Bstate for state in states])
     push!(Itimeseries, [state.Istate for state in states])
     push!(Ptimeseries, [state.Pstate for state in states])
+    push!(LORtimeseries, [state.LORstate for state in states])
     push!(Phagetimeseries, [state.Phage for state in states])
     while timenow < final_time
         #phage diffusion first 
@@ -121,7 +124,11 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             states[i].Bstate = 0
                             states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                             #Append the values of Pstate that match mask_LO to lysis_time_record
-                            append!(lysis_time_record, states[i].Pstate)                     
+                            append!(lysis_time_record, states[i].Pstate)  
+                            states[i].LORstate = false
+                            states[i].Istate = 0
+                            states[i].Pstate = 0.0
+                            totalLO+=1               
                         end
                     end
                     if li_collapse
@@ -131,6 +138,9 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                             # Append the values of Pstate that match mask_LI to lysis_time_record
                             append!(lysis_time_record, states[i].Pstate)
+                            states[i].LORstate = false
+                            states[i].Istate = 0
+                            states[i].Pstate = 0.0
                         end
                     end
                     if lysis_inhibition
@@ -234,6 +244,9 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                         states[i].Phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                         # Append the values of Pstate that match mask_lysis to lysis_time_record
                         append!(lysis_time_record, states[i].Pstate)
+                        states[i].LORstate = false
+                        states[i].Istate = 0
+                        states[i].Pstate = 0.0
                     end 
                 end 
             end
@@ -249,15 +262,17 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
             push!(Btimeseries, [state.Bstate for state in states])
             push!(Itimeseries, [state.Istate for state in states])
             push!(Ptimeseries, [state.Pstate for state in states])
+            push!(LORtimeseries, [state.LORstate for state in states])
             push!(Phagetimeseries, [state.Phage for state in states])
             non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
+            infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
             totalphage=sum([state.Phage for state in states])
-            println(timenow, "bacteria count: ", non_zero_Bstate_count, "phage count: ", totalphage)
+            println(timenow, "bacteria count: ", non_zero_Bstate_count, "infected count: ", infected_Bstate_count, "phage count: ", totalphage, "total LO: ", totalLO) 
         end
         
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, Phagetimeseries, lysis_time_record, states
+    return time, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states
 end
 
 function custom_color_profile(value, growth_timer, lysis_timer)
@@ -289,7 +304,8 @@ lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
 burst_size = 100 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
-eta = 1  #adsorption rate per box
+eta = 100  #adsorption rate per box
+#If it is 10^-9 ml/min and the volume is 1micron^3, then this will be 10^3 micron^3 / minute. That is the maximum. 
 lysis_inhibition=true
 lysis_inhibition_timer=4*10
 lysis_from_without=true
@@ -301,9 +317,12 @@ li_collapse_phage=100
 li_collapse_recovery= true
 licR_rate=1.0/300.0
 li_collapse_phage=40
-time_step=0.1
 push_distance=15
-hop_rate=1
+hop_rate=10
+#This is equal to the phage diffusion constant in the unit of lattice constant^2/min. 
+#Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. So if the lattice constant is 1 micron, 
+#240 is the maximum. 
+time_step=0.2/hop_rate
 if(time_step*hop_rate>0.5)
     println("Hop rate is too high")
 end 
@@ -314,10 +333,10 @@ record_time_step = 30 #minutes
 
 culture_growth=true
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
-lattice_size=1000
-bacteria = 200 #cells
+lattice_size=300
+bacteria = 100 #cells
 infected= 0
-final_time = record_time_step*100 # minutes
+final_time = record_time_step*200 # minutes
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria)
 states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
@@ -333,7 +352,7 @@ mkpath(data_dir)
 mkpath(figures_dir)
 
 
-time_series, Btimeseries, Itimeseries, Ptimeseries, Phagetimeseries, lysis_time_record, states = simulate_space_agents(
+time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states = simulate_space_agents(
         states, time_step, record_time_step, final_time, 
         growth_rate, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta, hop_rate, push_distance; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
@@ -345,7 +364,7 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, Phagetimeseries, lysis_time_
 
 
 data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer).jld2")
-@save  data_file_path time_series Btimeseries Itimeseries Ptimeseries Phagetimeseries lysis_time_record states time_step record_time_step final_time growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage li_collapse_recovery licR_rate
+@save  data_file_path time_series Btimeseries Itimeseries Ptimeseries LORtimeseries Phagetimeseries lysis_time_record states time_step record_time_step final_time growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage li_collapse_recovery licR_rate
 
 
 # Create the plot
@@ -361,17 +380,38 @@ max_value = maximum(Btimeseries_2d)
 println("Maximum value in Btimeseries_2d: ", max_value)
 
 # Assuming Btimeseries_2d is your 2D array of 0 and positive integers
-#binary_Btimeseries_2d = Btimeseries_2d .> 0
+binary_Btimeseries_2d = Btimeseries_2d .> 0
+binaryP_Btimeseries_2d = Btimeseries_2d .> growth_timer
 
 # Convert the boolean array to an integer array
-#binary_Btimeseries_2d = Int.(binary_Btimeseries_2d)
+binary_Btimeseries_2d = Int.(binary_Btimeseries_2d+binaryP_Btimeseries_2d)
 #custom_colors = cgrad([:black, :yellow], [0, 1])
 
-#heatmap(binary_Btimeseries_2d, color=custom_colors, xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
+heatmap(binary_Btimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
 
 #heatmap(Btimeseries_2d,  xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
-apply_custom_colormap(Btimeseries_2d, growth_timer, lysis_timer)
+#apply_custom_colormap(Btimeseries_2d, growth_timer, lysis_timer)
 
 # Save the heatmap to a file
 figure_file_path = joinpath(figures_dir, "Btimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+savefig(figure_file_path)
+
+LORtimeseries_2d = hcat(LORtimeseries...)'
+heatmap(LORtimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of LORtimeseries")
+figure_file_path = joinpath(figures_dir, "LORtimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+savefig(figure_file_path)
+
+Phagetimeseries_2d = hcat(Phagetimeseries...)'
+heatmap(LORtimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Phagetimeseries")
+figure_file_path = joinpath(figures_dir, "Phagetimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+savefig(figure_file_path)
+
+Itimeseries_2d = hcat(Itimeseries...)'
+heatmap(Itimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Itimeseries")
+figure_file_path = joinpath(figures_dir, "Itimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+savefig(figure_file_path)
+
+Ptimeseries_2d = hcat(Ptimeseries...)'
+heatmap(Ptimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Ptimeseries")
+figure_file_path = joinpath(figures_dir, "Ptimeseries_heatmap_lysis_timer($lysis_timer).pdf")
 savefig(figure_file_path)
