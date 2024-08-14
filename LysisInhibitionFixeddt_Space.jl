@@ -308,17 +308,18 @@ eta = 100  #adsorption rate per box
 #If it is 10^-9 ml/min and the volume is 1micron^3, then this will be 10^3 micron^3 / minute. That is the maximum. 
 lysis_inhibition=true
 lysis_inhibition_timer=4*10
-lysis_from_without=true
+lysis_from_without=false
 lysis_from_without_phage=10
-lo_resistance=true
+lo_resistance=false
 lo_resistance_timer=4*5
 li_collapse=true
 li_collapse_phage=100
-li_collapse_recovery= true
+li_collapse_recovery= false
 licR_rate=1.0/300.0
 li_collapse_phage=40
-push_distance=15
 hop_rate=10
+lattice_size=500
+push_distance=lattice_size
 #This is equal to the phage diffusion constant in the unit of lattice constant^2/min. 
 #Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. So if the lattice constant is 1 micron, 
 #240 is the maximum. 
@@ -329,27 +330,32 @@ end
 
 
 #Now set the initial condition and run the simulation. 
-record_time_step = 30 #minutes
+record_time_step = 1500 #minutes
 
-culture_growth=true
-#I will now make 2 versions of the simulation, one with MSOI and another is culture growth
-lattice_size=300
-bacteria = 100 #cells
+# Initialize the states
+
+iB_series = []
+Alive_series = []
+#Infected_series = []
+#Phage_series = []
+nsamples=100
+for ibacteria in 1:30
+    nalive=0
+    for isamples in 1:nsamples
+        println("ibacteria: ", ibacteria, "isamples: ", isamples)
+    states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
+bacteria = ibacteria #cells
 infected= 0
-final_time = record_time_step*200 # minutes
+final_time = 30*25 # minutes
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria)
-states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
+
 for i in 1:bacteria
-    states[Int(lattice_size/2-bacteria/2)+i].Bstate = growth_timer #rand(1:growth_timer)
+     states[Int(floor(lattice_size/2 - bacteria/2)) + i].Bstate = growth_timer # rand(1:growth_timer)
 end
-states[Int(lattice_size/2-bacteria/2)].Phage = 1
-states[Int(lattice_size/2+bacteria/2)+1].Phage = 1
-    # Create directories if they do not exist
-data_dir = "data_files_space"
-figures_dir = "figure_files_space"
-mkpath(data_dir)
-mkpath(figures_dir)
+ states[Int(floor(lattice_size/2 - bacteria/2))].Phage = Int(floor(lysis_from_without_phage / 2))
+ states[Int(floor(lattice_size/2 + bacteria/2)) + 1].Phage = Int(floor(lysis_from_without_phage / 2))
+# Create directories if they do not exist
 
 
 time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states = simulate_space_agents(
@@ -361,12 +367,47 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
         li_collapse=li_collapse, li_collapse_phage=li_collapse_phage,
         li_collapse_recovery=li_collapse_recovery, licR_rate=licR_rate)
     
+        non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
+        if non_zero_Bstate_count>0
+            nalive+=1
+            if non_zero_Bstate_count<0.9*lattice_size
+                println("unclear ", ibacteria, " ", non_zero_Bstate_count)
+            end
+        end
+    end
+        #infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
+        #totalphage=sum([state.Phage for state in states])
+        push!(iB_series, ibacteria)
+        push!(Alive_series, nalive)
+        #push!(Infected_series, infected_Bstate_count)
+        #push!(Phage_series, totalphage)
+end
+data_dir = "data_files_space_ctirical"
+figures_dir = "figure_files_space_critical"
+mkpath(data_dir)
+mkpath(figures_dir)
 
 
-data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer).jld2")
-@save  data_file_path time_series Btimeseries Itimeseries Ptimeseries LORtimeseries Phagetimeseries lysis_time_record states time_step record_time_step final_time growth_rate lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage li_collapse_recovery licR_rate
+plot(iB_series, Alive_series, label="Alive", linewidth=2) #, yscale=:log10)
+#plot!(iB_series, Infected_series, label="Infected Bacteria", linewidth=2)
+#plot!(time_P, Ptimeseries_filtered, label="Phage", linewidth=2)
 
+# Set labels and title
+xlabel!("Initial Bacteria")
+ylabel!("Probability to be alive")
+title!("Critical size")
 
+# Show legend
+#plot!(legend=:topright)
+
+figure_file_path = joinpath(figures_dir, "Ctirical_size_LO($lysis_from_without)_LI($lysis_inhibition)_LIC($li_collapse).pdf")
+savefig(figure_file_path)
+        
+
+#data_file_path = joinpath(data_dir, "Ctirical_size_LO($lysis_from_without)_LI($lysis_inhibition)_LIC($li_collapse).jld2")
+#@save  iB_series Alive_series Infected_series Phage_series 
+
+"""
 # Create the plot
 Btimeseries_2d = hcat(Btimeseries...)'
 
@@ -415,3 +456,4 @@ Ptimeseries_2d = hcat(Ptimeseries...)'
 heatmap(Ptimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Ptimeseries")
 figure_file_path = joinpath(figures_dir, "Ptimeseries_heatmap_lysis_timer($lysis_timer).pdf")
 savefig(figure_file_path)
+"""
