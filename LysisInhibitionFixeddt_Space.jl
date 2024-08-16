@@ -268,6 +268,17 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
             infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
             totalphage=sum([state.Phage for state in states])
             println(timenow, "bacteria count: ", non_zero_Bstate_count, "infected count: ", infected_Bstate_count, "phage count: ", totalphage, "total LO: ", totalLO) 
+            if non_zero_Bstate_count==0
+                println("All bacteria are dead")
+                timenow=final_time
+                break
+            end
+        end
+        non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
+        if non_zero_Bstate_count==0
+            println("All bacteria are dead")
+            timenow=final_time
+            break
         end
         
     end
@@ -302,28 +313,28 @@ lysis_rate = 1.0/25.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
-burst_size = 100 #burst size
+burst_size = 150 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
-eta = 100  #adsorption rate per box
+eta = 200  #adsorption rate per box
 #If it is 10^-9 ml/min and the volume is 1micron^3, then this will be 10^3 micron^3 / minute. That is the maximum. 
+
+lysis_from_without=true
+lysis_from_without_phage=100
+lo_resistance=lysis_from_without
+lo_resistance_timer=4*5
 lysis_inhibition=true
 lysis_inhibition_timer=4*10
-lysis_from_without=false
-lysis_from_without_phage=10
-lo_resistance=false
-lo_resistance_timer=4*5
 li_collapse=true
-li_collapse_phage=100
+li_collapse_phage=200
 li_collapse_recovery= false
 licR_rate=1.0/300.0
-li_collapse_phage=40
 hop_rate=10
-lattice_size=500
+lattice_size=60
 push_distance=lattice_size
 #This is equal to the phage diffusion constant in the unit of lattice constant^2/min. 
 #Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. So if the lattice constant is 1 micron, 
 #240 is the maximum. 
-time_step=0.2/hop_rate
+time_step=min(0.2/hop_rate, 1/eta)
 if(time_step*hop_rate>0.5)
     println("Hop rate is too high")
 end 

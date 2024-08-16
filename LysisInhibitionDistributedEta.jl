@@ -207,7 +207,7 @@ lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
 burst_size = 100 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
-mean_eta = 5e-9  #adsorption rate per ml/min
+mean_eta = 1e-9  #adsorption rate per ml/min
 sd_eta = mean_eta  #standard deviation of the adsorption rate
 lysis_inhibition=true
 lysis_inhibition_timer=4*10
@@ -216,10 +216,9 @@ lysis_from_without_phage=10
 lo_resistance=true
 lo_resistance_timer=4*5
 li_collapse=true
-li_collapse_phage=100
+li_collapse_phage=200
 li_collapse_recovery= false
 licR_rate=1.0/300.0
-li_collapse_phage=100
 time_step=0.1
 
 #Now set the initial condition and run the simulation. 
@@ -228,12 +227,12 @@ record_time_step = 1 #minutes
 culture_growth=true
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 if culture_growth
-    volume = 0.01 #ml
+    volume = 0.001 #ml
     nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
-    bacteria = Int(round(1e7*volume)) #cells
+    bacteria = Int(round(1e8*volume)) #cells
     infected= 0
     final_time = 10*60 # minutes
-    phage = Int(round(1e6*volume)) # pfu
+    phage = Int(round(2e7*volume)) # pfu
     # Generate random values
     initial_values = rand(1:growth_timer, bacteria-infected)
     append!(initial_values, [growth_timer + 1 for _ in 1:infected])
@@ -244,8 +243,8 @@ if culture_growth
 
 
     # Create directories if they do not exist
-    data_dir = "data_files_struct_culture_LOR_etadist1"
-    figures_dir = "figure_files_struct_culture_LOR_etadist1"
+    data_dir = "data_files_struct_culture_etadist1"
+    figures_dir = "figure_files_struct_culture_etadist1"
     mkpath(data_dir)
     mkpath(figures_dir)
 
