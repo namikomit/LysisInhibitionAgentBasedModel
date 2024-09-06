@@ -350,7 +350,7 @@ Alive_series = []
 #Infected_series = []
 #Phage_series = []
 nsamples=100
-for ibacteria in 1:30
+for ibacteria in 1:20
     nalive=0
     for isamples in 1:nsamples
         println("ibacteria: ", ibacteria, "isamples: ", isamples)

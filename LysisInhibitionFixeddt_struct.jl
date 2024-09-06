@@ -19,8 +19,7 @@ end
 # Main function
 function simulate_population_agents(states::Vector{State}, time_step, record_time_step, final_time, bacteria, phage, infected, volume, 
     growth_rate, nutrient, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
-    lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_timer=5, li_collapse=false, li_collapse_phage=100,
-    li_collapse_recovery=false, licR_rate=1.0/10.0)
+    lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_timer=5, li_collapse=false, li_collapse_phage=100)
     # Add your code here
     
     println("started")
@@ -87,10 +86,10 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                     
                     #The lysis from without can happen
                     check_LO = !states[i].LORstate * states[i].Istate  #If true for LOR state, Istate will be multiplied by 0. 
-                    if check_LO > lysis_from_without_phage
+                    if check_LO >= lysis_from_without_phage
                         #println("lysis from without")
                         states[i].Bstate = 0
-                        lo_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                        lo_new_phage =0 #+= max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
                         # Append the values of Pstate that match mask_LO to lysis_time_record
                         append!(lysis_time_record, states[i].Pstate)                     
                     end
@@ -119,9 +118,6 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                         states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer*phageinfect_array[i])
                     end    
                 end
-            end
-            if li_collapse_recovery && states[i].LORstate
-                states[i].Istate = max(0,states[i].Istate - rand(Poisson(states[i].Istate*licR_rate*time_step)))
             end
             # Update Bstate elements less than growth_timer with probability grate * time_step
             #println("growth")
@@ -209,14 +205,12 @@ lo_resistance=true
 lo_resistance_timer=4*5
 li_collapse=true
 li_collapse_phage=100
-li_collapse_recovery= false
-licR_rate=1.0/300.0
 time_step=0.1
 
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-culture_growth=true
+culture_growth=false
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 if culture_growth
     volume = 0.001 #ml
@@ -246,13 +240,12 @@ if culture_growth
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
-        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage,
-        li_collapse_recovery=li_collapse_recovery, licR_rate=licR_rate)
+        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
 
 
     data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer).jld2")
-    @save  data_file_path time Btimeseries Itimeseries Ptimeseries lysis_time_record states time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage li_collapse_recovery licR_rate
+    @save  data_file_path time Btimeseries Itimeseries Ptimeseries lysis_time_record states time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage 
 
 
     # Create the plot
@@ -290,16 +283,17 @@ if culture_growth
     savefig(figure_file_path)
 
 else
-    volume = 0.01 #ml
+    volume = 0.1 #ml
     nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
     bacteria = Int(round(2e7*volume)) #cells
     infected=Int(round(1e7*volume))
     si_duration=3. #minutes
-    msoi=7.6 
+    msoi=0.0 
     #deltaP=P_0*(1-exp(-eta*(B/volume)*s)
     #The total number of phages adsorbed, if P_0 is per ml, then dP is also per ml
     #Then msoi=deltaP/(B/volume)=   P_0(1-exp(-eta*(B/volume)*si_duration))/(B/volume)
-    P0 = msoi * ((Float64(bacteria) / volume)) / (1 - exp(-eta * Float64(bacteria) / volume * si_duration))
+    eta0=5e-9
+    P0 = msoi * ((Float64(bacteria) / volume)) / (1 - exp(-eta0 * Float64(bacteria) / volume * si_duration))
     si_time = 15. # minutes
     final_time = si_time # minutes
     #eta=eta*0.3
@@ -313,8 +307,8 @@ else
 
 
     # Create directories if they do not exist
-    data_dir = "data_files_struct_growth_LOR"
-    figures_dir = "figure_files_struct_growth_LOR"
+    data_dir = "data_files_struct_growth_paper"
+    figures_dir = "figure_files_struct_growth_paper"
     mkpath(data_dir)
     mkpath(figures_dir)
 
@@ -327,8 +321,7 @@ else
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
-        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage,
-        li_collapse_recovery=li_collapse_recovery, licR_rate=licR_rate)
+        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
     #   27.553249 seconds (668.70 k allocations: 30.180 GiB, 15.08% gc time, 0.71% compilation time)
     phage = Int(round(P0 * volume)) # pfu
@@ -341,8 +334,7 @@ else
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
-        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage,
-        li_collapse_recovery=li_collapse_recovery, licR_rate=licR_rate)
+        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
 
 
@@ -358,8 +350,7 @@ else
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
-        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage,
-        li_collapse_recovery=li_collapse_recovery, licR_rate=licR_rate)
+        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
 
     append!(lysis_time_record2, lysis_time_record)
