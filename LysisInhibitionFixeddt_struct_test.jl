@@ -210,15 +210,15 @@ time_step=0.01
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-culture_growth=false
+culture_growth=true
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 if culture_growth
     volume = 0.001 #ml
     nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
-    bacteria = Int(round(1e8*volume)) #cells
+    bacteria = Int(round(1e3*volume)) #cells
     infected= 0
-    final_time = 10*60 # minutes
-    phage = Int(round(2e7*volume)) # pfu
+    final_time = 5*60 # minutes
+    phage = Int(round(0*volume)) # pfu
     # Generate random values
     initial_values = rand(1:growth_timer, bacteria-infected)
     append!(initial_values, [growth_timer + 1 for _ in 1:infected])
@@ -227,8 +227,8 @@ if culture_growth
 
 
     # Create directories if they do not exist
-    data_dir = "data_files_struct_culture_Default"
-    figures_dir = "figure_files_struct_culture_Default"
+    data_dir = "data_files_test"
+    figures_dir = "figure_files_test"
     mkpath(data_dir)
     mkpath(figures_dir)
 
@@ -260,8 +260,12 @@ if culture_growth
     time_P, Ptimeseries_filtered = filter_positive(time, Ptimeseries/volume)
 
     # Create the plot with log scale on y-axis
-    plot(time_B, Btimeseries_filtered, label="Bacteria", linewidth=2) #, yscale=:log10)
-    plot!(time_I, Itimeseries_filtered, label="Infected Bacteria", linewidth=2)
+    plot(time_B, Btimeseries_filtered, label="Bacteria", linewidth=2, yscale=:log10)
+    theoretical_curve = 1000 * exp.(growth_rate .* time_B)
+    theoretical_curve2 = 1000 * 2 .^ (growth_rate .* time_B)
+    plot!(time_B, theoretical_curve, label="Theory", linewidth=2, yscale=:log10)
+    plot!(time_B, theoretical_curve2, label="Theory2", linewidth=2, yscale=:log10)
+    #plot!(time_I, Itimeseries_filtered, label="Infected Bacteria", linewidth=2)
     #plot!(time_P, Ptimeseries_filtered, label="Phage", linewidth=2)
 
     # Set labels and title
