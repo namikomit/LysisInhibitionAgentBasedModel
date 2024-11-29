@@ -5,7 +5,8 @@ using Random
 using Plots
 using Distributions
 using JLD2
-
+using CSV
+using DataFrames
 
 #I will now try to create a struct
 mutable struct State
@@ -192,17 +193,17 @@ end
 growth_rate = 2.0/60. #per minute
 lysis_rate = 1.0/25.0  #per minute
 growth_timer = 10 #max growth timer
-lysis_timer = 200 #max lysis timer, 4 timer is 1 minute
-eclipse = 15    #eclipse time in minutes
-burst_size = 100 #burst size
+lysis_timer = 200 #max lysis timer
+eclipse = 5    #eclipse time in minutes
+burst_size = 150 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
-eta = 1e-9  #adsorption rate per ml/min
+eta = 5e-9  #adsorption rate per ml/min
 lysis_inhibition=true
-lysis_inhibition_timer=4*10*2
+lysis_inhibition_timer=50
 lysis_from_without=true
 lysis_from_without_phage=50
 lo_resistance=true
-lo_resistance_timer=4*5
+lo_resistance_timer=1
 li_collapse=true
 li_collapse_phage=100
 time_step=0.01
@@ -286,9 +287,10 @@ else
     volume = 0.01 #ml
     nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
     bacteria = Int(round(2e7*volume)) #cells
-    infected=Int(round(1e7*volume))
+    infected=bacteria
+    #bacteria=bacteria+infected
     si_duration=3. #minutes
-    msoi=0.4 
+    msoi=1.6
     #deltaP=P_0*(1-exp(-eta*(B/volume)*s)
     #The total number of phages adsorbed, if P_0 is per ml, then dP is also per ml
     #Then msoi=deltaP/(B/volume)=   P_0(1-exp(-eta*(B/volume)*si_duration))/(B/volume)
@@ -340,7 +342,7 @@ else
 
     phage = 0
     final_time = 40 # minutes
-    #eta=0.0
+    eta=0.0  # because phages were continuously added
     #println(length(Bstate), length(Pstate), length(Istate), length(LORstate), bacteria)
 
     time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
@@ -400,6 +402,11 @@ else
 
     figure_file_path = joinpath(figures_dir, "phage_difference_plot_lysis_timer($lysis_timer)_lysis_inhibition_timer($lysis_inhibition_timer)_MSOI$(msoi).pdf")
     savefig(figure_file_path)
+
+    time_save = time2[2:end] .+ 18
+    df = DataFrame(time=time_save, phage_diff=P_diff)
+    rename!(df, :time => Symbol("#time"))
+    CSV.write(joinpath(figures_dir, "phage_difference_lysis_timer($lysis_timer)_lysis_inhibition_timer($lysis_inhibition_timer)_MSOI$(msoi).csv"), df)
 
     plot(size=(800, 480))
 

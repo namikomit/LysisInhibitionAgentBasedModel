@@ -201,7 +201,7 @@ end
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
 growth_rate = 2.0/60. #per minute
-lysis_rate = 1.0/25.0  #per minute
+lysis_rate = 1.0/27.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
@@ -210,21 +210,23 @@ burst_rate=burst_size/((1/lysis_rate)-eclipse)
 mean_eta = 1e-9  #adsorption rate per ml/min
 sd_eta = mean_eta  #standard deviation of the adsorption rate
 lysis_inhibition=true
-lysis_inhibition_timer=4*10
+lysis_inhibition_timer=4*10*2
 lysis_from_without=true
-lysis_from_without_phage=10
+lysis_from_without_phage=50
 lo_resistance=true
 lo_resistance_timer=4*5
 li_collapse=true
-li_collapse_phage=200
+li_collapse_phage=100
 li_collapse_recovery= false
 licR_rate=1.0/300.0
-time_step=0.1
+time_step=0.01
+
+
 
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-culture_growth=true
+culture_growth=false
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 if culture_growth
     volume = 0.001 #ml
@@ -305,7 +307,7 @@ else
     bacteria = Int(round(2e7*volume)) #cells
     infected=Int(round(1e7*volume))
     si_duration=3. #minutes
-    msoi=7.6 
+    msoi=0. 
     #deltaP=P_0*(1-exp(-eta*(B/volume)*s)
     #The total number of phages adsorbed, if P_0 is per ml, then dP is also per ml
     #Then msoi=deltaP/(B/volume)=   P_0(1-exp(-eta*(B/volume)*si_duration))/(B/volume)
@@ -319,6 +321,8 @@ else
     initial_values = rand(1:growth_timer, bacteria-infected)
     append!(initial_values, [growth_timer + 1 for _ in 1:infected])
     #make it into an array with default values
+    mu_eta = log(mean_eta^2 / sqrt(sd_eta^2 + mean_eta^2))
+    sigma_eta = sqrt(log(sd_eta^2 / mean_eta^2 + 1))
     states = [StateE(initial_values[i], 0, 0.0, false, rand(LogNormal(mu_eta, sigma_eta))) for i in 1:bacteria]
 
 
