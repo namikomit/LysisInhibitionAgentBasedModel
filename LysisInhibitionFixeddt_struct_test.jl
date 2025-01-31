@@ -190,19 +190,19 @@ end
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
 growth_rate = 2.0/60. #per minute
-lysis_rate = 1.0/25.0  #per minute
+lysis_rate = 1.0/27.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 200 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
-burst_size = 100 #burst size
+burst_size = 150 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
 eta = 1e-9  #adsorption rate per ml/min
 lysis_inhibition=true
-lysis_inhibition_timer=4*10*2
+lysis_inhibition_timer =  Int(round(5*(lysis_timer*lysis_rate)))
 lysis_from_without=true
 lysis_from_without_phage=50
 lo_resistance=true
-lo_resistance_timer=4*5
+lo_resistance_timer= Int(round(10*(lysis_timer*lysis_rate)))
 li_collapse=true
 li_collapse_phage=100
 time_step=0.01
@@ -210,7 +210,7 @@ time_step=0.01
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
 
-culture_growth=true
+culture_growth=false
 #I will now make 2 versions of the simulation, one with MSOI and another is culture growth
 if culture_growth
     volume = 0.001 #ml
@@ -290,7 +290,7 @@ else
     volume = 0.01 #ml
     nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
     bacteria = Int(round(2e7*volume)) #cells
-    infected=Int(round(1e7*volume))
+    infected=bacteria
     si_duration=3. #minutes
     msoi=0.4 
     #deltaP=P_0*(1-exp(-eta*(B/volume)*s)
@@ -307,12 +307,12 @@ else
     initial_values = rand(1:growth_timer, bacteria-infected)
     append!(initial_values, [growth_timer + 1 for _ in 1:infected])
     #make it into an array with default values
-    states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
+    states = [State(initial_values[i], 1, 0.0, false) for i in 1:bacteria]
 
 
     # Create directories if they do not exist
     data_dir = "data_files_struct_growth_paper_eta1e-9"
-    figures_dir = "figure_files_struct_growth_paper_eta1e-9"
+    figures_dir = "test"
     mkpath(data_dir)
     mkpath(figures_dir)
 
@@ -327,10 +327,20 @@ else
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
         li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
-    #   27.553249 seconds (668.70 k allocations: 30.180 GiB, 15.08% gc time, 0.71% compilation time)
-    phage = Int(round(P0 * volume)) # pfu
-    print(phage)
+    #phage = Int(round(P0 * volume)) # pfu
+    #print(phage)
     final_time = si_duration     #minutes
+    println(lysis_inhibition_timer, states[1].Bstate-growth_timer)
+    for i=1:Int(bacteria)
+        states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer*2)
+        states[i].Istate=+1
+        #j=Int(bacteria/4)+i
+        #states[j].Bstate = max(growth_timer+1, states[j].Bstate - lysis_inhibition_timer*2)
+        #states[j].Istate=+2
+        #j=Int(bacteria/4)*2+i
+        #states[j].Bstate = max(growth_timer+1, states[j].Bstate - lysis_inhibition_timer*3)
+        #states[j].Istate=+3
+    end 
     time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
@@ -360,8 +370,8 @@ else
     append!(lysis_time_record2, lysis_time_record)
     # Save the data
 
-    data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer)_lysis_inhibition_timer($lysis_inhibition_timer)_MSOI$(msoi).jld2")
-    @save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 states time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage
+    #data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer)_lysis_inhibition_timer($lysis_inhibition_timer)_MSOI$(msoi).jld2")
+    #@save  data_file_path time2 Btimeseries2 Itimeseries2 Ptimeseries2 lysis_time_record2 states time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage
     #@save "population_data_lysis_timer($lysis_timer)_MSOI$(msoi).jld2" begin
     #    time2, Btimeseries2, Itimeseries2, Ptimeseries2, irecord2, 
     #    Bstate, Pstate, Istate, LORstate, time_step, record_time_step, 

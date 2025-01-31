@@ -305,7 +305,7 @@ else
     initial_values = rand(1:growth_timer, bacteria-infected)
     append!(initial_values, [growth_timer + 1 for _ in 1:infected])
     #make it into an array with default values
-    states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
+    states = [State(initial_values[i], 1, 0.0, false) for i in 1:bacteria]
 
 
     # Create directories if they do not exist
