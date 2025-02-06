@@ -207,7 +207,7 @@ lysis_from_without=true
 lysis_from_without_phage=50
 lo_resistance=true
 lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
-li_collapse=false
+li_collapse=true
 li_collapse_phage=100
 time_step=0.01
 eta=2.e-9
@@ -223,12 +223,12 @@ lysis_timer_flag=true
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
-volume = 0.01 #ml
+volume = 0.001 #ml
 nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
-bacteria = Int(round(1e7*volume)) #cells
+bacteria = Int(round(1e8*volume)) #cells
 infected= 0
-final_time = 10*60 # minutes
-phage = Int(round(1e5*volume)) # pfu
+final_time = 6*60 # minutes
+phage = Int(round(2e7*volume)) # pfu
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria-infected)
 append!(initial_values, [growth_timer + 1 for _ in 1:infected])
@@ -239,7 +239,7 @@ states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
 # Create directories if they do not exist
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
-
+#Simulation without no interference
 
 time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
     states, time_step, record_time_step, final_time, 
