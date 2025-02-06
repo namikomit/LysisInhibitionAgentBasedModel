@@ -191,31 +191,6 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
 end
 
 
-# Read the CSV file
-file_path = "BodeData/BodeFig2D.csv"
-data = CSV.read(file_path, DataFrame; header=false)
-
-# Assign custom names to the columns
-rename!(data, [:time_from_infection, :phage_flux])
-
-data.phage_flux = data.phage_flux ./maximum(data.phage_flux)
-
-# Extract the columns
-#x = data.time_from_infection
-#y = data.phage_flux
-
-# Create the plot using PlotlyJS
-#trace = scatter(x=x, y=y, mode="lines+markers")
-#layout = Layout(title="Phage Flux Over Time", xaxis_title="Time from Infection", yaxis_title="Phage Flux")
-#plot = Plot([trace], layout)
-
-# Save the plot as an HTML file to preserve interactivity
-#savefig(plot, "BodeFig2D_plot.html")
-
-# Optionally, save the plot as a static image (e.g., PNG)
-#savefig(plot, "BodeFig2D_plot.png")
-
-
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
 growth_rate = 2.0/60. #per minute
@@ -232,10 +207,10 @@ lysis_from_without=true
 lysis_from_without_phage=50
 lo_resistance=true
 lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
-li_collapse=true
+li_collapse=false
 li_collapse_phage=100
 time_step=0.01
-eta0=2.e-9
+eta=2.e-9
 
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
@@ -248,12 +223,12 @@ lysis_timer_flag=true
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
-volume = 0.001 #ml
+volume = 0.01 #ml
 nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
-bacteria = Int(round(1e8*volume)) #cells
+bacteria = Int(round(1e7*volume)) #cells
 infected= 0
 final_time = 10*60 # minutes
-phage = Int(round(2e7*volume)) # pfu
+phage = Int(round(1e5*volume)) # pfu
 # Generate random values
 initial_values = rand(1:growth_timer, bacteria-infected)
 append!(initial_values, [growth_timer + 1 for _ in 1:infected])
@@ -262,9 +237,7 @@ states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
 
 
 # Create directories if they do not exist
-data_dir = "data_files_struct_culture_Default"
-figures_dir = "figure_files_struct_culture_Default"
-mkpath(data_dir)
+figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
 
@@ -278,11 +251,6 @@ time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria
     li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
 
 
-
-data_file_path = joinpath(data_dir, "population_data_lysis_timer($lysis_timer).jld2")
-@save  data_file_path time Btimeseries Itimeseries Ptimeseries lysis_time_record states time_step record_time_step final_time volume growth_rate nutrient lysis_rate burst_rate eclipse growth_timer lysis_timer eta lysis_inhibition lysis_inhibition_timer lysis_from_without lysis_from_without_phage lo_resistance lo_resistance_timer li_collapse li_collapse_phage 
-
-
 # Create the plot
 # Filter out zero or negative values
 function filter_positive(time, series)
@@ -294,25 +262,53 @@ time_B, Btimeseries_filtered = filter_positive(time, Btimeseries/volume)
 time_I, Itimeseries_filtered = filter_positive(time, Itimeseries/volume)
 time_P, Ptimeseries_filtered = filter_positive(time, Ptimeseries/volume)
 
-# Create the plot with log scale on y-axis
-plot(time_B, Btimeseries_filtered, label="Bacteria", linewidth=2) #, yscale=:log10)
-plot!(time_I, Itimeseries_filtered, label="Infected Bacteria", linewidth=2)
-#plot!(time_P, Ptimeseries_filtered, label="Phage", linewidth=2)
+# Create the timeseries plot using PlotlyJS
+trace_B = scatter(x = time_B, y = Btimeseries_filtered, mode = "lines", name = "Bacteria", line = attr(width = 2))
+trace_I = scatter(x = time_I, y = Itimeseries_filtered, mode = "lines", name = "Infected Bacteria", line = attr(width = 2))
+trace_P = scatter(x = time_P, y = Ptimeseries_filtered, mode = "lines", name = "Phage", line = attr(width = 2))
 
-# Set labels and title
-xlabel!("Time (minutes)")
-ylabel!("Population")
-title!("Population Dynamics")
+layout_timeseries = Layout(
+    xaxis = attr(title = "Time (minutes)"),
+    yaxis = attr(title = "Bacteria or Phage (/ml)", type = "log",tickformat = ".0e" )  # Set y-axis to logarithmic scale
+)
 
-# Show legend
-#plot!(legend=:topright)
+plot_timeseries = Plot([trace_B, trace_I,trace_P], layout_timeseries)
 
-figure_file_path = joinpath(figures_dir, "population_dynamics_plot_lysis_timer($lysis_timer).pdf")
-savefig(figure_file_path)
+# Save the timeseries plot
+savefig(plot_timeseries, joinpath(figures_dir, "Population_LIC($li_collapse)_LICT($li_collapse_phage).pdf"))
 
-plot(size=(800, 480))
+#layout_Ptimeseries = Layout(
+#    xaxis = attr(title = "Time (minutes)"),  
+#    yaxis = attr(title = "Phage (/ml)", type = "log")  # Set y-axis to logarithmic scale
+#)
 
-# Create the histogram
-histogram(lysis_time_record, bins=200, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
-figure_file_path = joinpath(figures_dir, "lysis_time_histogram_lysis_timer($lysis_timer).pdf")
-savefig(figure_file_path)
+#plot_timeseries = Plot([trace_P], layout_Ptimeseries)
+
+# Save the timeseries plot
+#savefig(plot_timeseries, joinpath(figures_dir, "population_dynamics_LIC($li_collapse)_LICT($li_collapse_phage).pdf"))
+
+
+
+# Create the histogram using PlotlyJS
+trace_histogram = histogram(x = lysis_time_record, nbinsx = 200, name = "Lysis Time Histogram")
+
+layout_histogram = Layout(
+    xaxis = attr(title = "Lysis Time"),
+    yaxis = attr(title = "Frequency"),
+    title = "Histogram of Lysis Time"
+)
+
+plot_histogram = Plot([trace_histogram], layout_histogram)
+
+# Save the histogram plot
+savefig(plot_histogram, joinpath(figures_dir, "lysis_time_histogram_LIC($li_collapse)_LICT($li_collapse_phage).pdf"))
+
+
+data_file_path = joinpath(figures_dir, "Btimeseries_filtered_LIC($li_collapse)_LICT($li_collapse_phage).csv")
+CSV.write(data_file_path, DataFrame(time = time_B, Btimeseries = Btimeseries_filtered))
+
+data_file_path = joinpath(figures_dir, "Itimeseries_filtered_LIC($li_collapse)_LICT($li_collapse_phage).csv")
+CSV.write(data_file_path, DataFrame(time = time_I, Itimeseries = Itimeseries_filtered))
+
+data_file_path = joinpath(figures_dir, "Ptimeseries_filtered_LIC($li_collapse)_LICT($li_collapse_phage).csv")
+CSV.write(data_file_path, DataFrame(time = time_P, Ptimeseries = Ptimeseries_filtered))
