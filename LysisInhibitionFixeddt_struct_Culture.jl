@@ -219,20 +219,20 @@ lysis_timer_flag=true
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
-volume = 0.001 #ml
+volume = 0.01 #ml
 
 
 # Create directories if they do not exist
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 #Simulation without no interference
-collapse_threshold_test=false
+collapse_threshold_test=true
 if(collapse_threshold_test)
     collapse_threshold = [50, 75, 100, 125, 150]
     collapse_time = Float64[0, 0, 0, 0, 0]
     collapse_definition_population = 1.
-    initialB=1e8
-    initialP=2e7
+    initialB=5e7
+    initialP=1e7
     for i in range(1, stop=length(collapse_threshold))
         global li_collapse_phage = collapse_threshold[i]
         nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
@@ -269,8 +269,27 @@ end
 trace = scatter(x = collapse_threshold, y = collapse_time, mode = "markers", line = attr(size=10, color="blue"))
 
 layout_collapsetime = Layout(
-    xaxis = attr(title = "LI collapse threshold", range = [0, maximum(collapse_threshold)]*1.1),
-    yaxis = attr(title = "Collapse time (min)", range = [0, maximum(collapse_time)]*1.1 )  
+    xaxis = attr(
+        title = "LI collapse threshold", 
+        range = [0, maximum(collapse_threshold)]*1.1,
+        linecolor = "black",
+        linewidth = 2,
+        ticks = "inside",  # Add ticks inside the plot
+        showline = true,  # Show line on the bottom x-axis
+        mirror = true  # Mirror the axis lines on the top and right
+    ),
+    yaxis = attr(
+        title = "Collapse time (min)", 
+        range = [0, maximum(collapse_time)]*1.1,
+        linecolor = "black",
+        linewidth = 2,
+        ticks = "inside",  # Add ticks inside the plot
+        showline = true,  # Show line on the left y-axis
+        mirror = true  # Mirror the axis lines on the top and right
+    ),
+    plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
+    paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
+    legend = "false"
 )
 
 plot_timeseries = Plot([trace], layout_collapsetime)
@@ -293,12 +312,11 @@ else
     global li_collapse_phage = 100
     antiphage_timing_list = [180.,  360.]
    
-    for i in range(1, stop=length(antiphage_timing_list))
-        global growth_rate = 2.0/60. #per minute
+    for i in range(1, stop=3)
         global burst_size = 150 #burst size
         global burst_rate=burst_size/((1/lysis_rate)-eclipse)
-        initialB=1e8
-        initialP=2e7
+        initialB=5e7
+        initialP=1e7
         final_time = 6*60 # minutes
         nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
         bacteria = Int(round(initialB*volume)) #cells
@@ -309,7 +327,17 @@ else
         append!(initial_values, [growth_timer + 1 for _ in 1:infected])
 #make it into an array with default values
         states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
-    time_antiphage=antiphage_timing_list[i]#minutes
+        if(i==1)
+            time_antiphage=final_time
+            global li_collapse_phage = 100000
+        elseif(i==2)
+            time_antiphage=final_time
+            global li_collapse_phage = 100
+        else    
+            time_antiphage=180
+            global li_collapse_phage = 100
+        end
+   
 
     time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, time_antiphage, 
@@ -361,7 +389,7 @@ time_P, Ptimeseries_filtered = filter_positive(new_time, new_Ptimeseries/volume)
 
 # Save the timeseries plot
 #savefig(plot_timeseries, joinpath(figures_dir, "Population_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage_test.pdf"))
-end
+#end
 
 push!(all_timesB, time_B)
 push!(all_Btimeseries, Btimeseries_filtered)
@@ -372,22 +400,49 @@ push!(all_Ptimeseries, Ptimeseries_filtered)
 end
 
 # Create the timeseries plot using PlotlyJS
-    tracesB = Vector{PlotlyJS.AbstractTrace}()  # Initialize the traces array
-    for i in 1:5
-        push!(tracesB, scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", name = "Bacteria $(antiphage_timing_list[i])", line = attr(width = 2)))
-    end
+i=1
+tracesB1=scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  "blue"),showlegend=false)
+tracesI1=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  "purple"),showlegend=false)
+tracesP1=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  "red"),showlegend=false)
+i=2
+tracesB2=scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  "blue"),showlegend=false)
+tracesI2=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  "purple"),showlegend=false)
+tracesP2=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  "red"),showlegend=false)
+i=3
+tracesB3=scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  "blue"),showlegend=false)
+tracesI3=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  "purple"),showlegend=false)
+tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  "red"),showlegend=false)
     #tracesB=scatter(x = all_timesB[1], y = all_Btimeseries[1], mode = "lines", name = "Bacteria $(antiphage_timing_list[1])", line = attr(width = 2))
     #tracesB2=scatter(x = all_timesB[2], y = all_Btimeseries[2], mode = "lines", name = "Bacteria $(antiphage_timing_list[2])", line = attr(width = 2))
     layout_timeseries = Layout(
-        xaxis = attr(title = "Time (minutes)"),#, range = [0, maximum(vcat(all_timesB...))]),
-        yaxis = attr(title = "Bacteria (/ml)", type = "log", tickformat = ".0e")#, range = [1e4, maximum(vcat(all_Btimeseries...))])  # Set y-axis to logarithmic scale
-    )
+        xaxis = attr(
+            title = "Time (minutes)",
+            linecolor = "black",
+            linewidth = 2,
+            ticks = "inside",  # Add ticks inside the plot
+            showline = true,  # Show line on the bottom x-axis
+            mirror = true  # Mirror the axis lines on the top and right
+        ),
+        yaxis = attr(
+            title = "Bacteria of Phage /ml",
+            linecolor = "black",
+            linewidth = 2,
+            ticks = "inside",  # Add ticks inside the plot
+            type = "log", 
+            tickformat = ".0e",
+            showline = true,  # Show line on the left y-axis
+            mirror = true  # Mirror the axis lines on the top and right
+        ),
+        plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
+        paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
+        legend = "false"
+        )
     #test=[]
     #push!(test, tracesB)
     #push!(test, tracesB2)
     #test=[tracesB, tracesB2]
 
-    plot_timeseries = plot(tracesB, layout_timeseries)  # Use `plot` instead of `Plot`
+    plot_timeseries = plot([tracesB1, tracesI1, tracesP1, tracesB2, tracesI2,tracesP2, tracesB3, tracesI3,tracesP3], layout_timeseries)  # Use `plot` instead of `Plot`
 
     # Save the timeseries plot
     savefig(plot_timeseries, joinpath(figures_dir, "Population_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage.pdf"))
