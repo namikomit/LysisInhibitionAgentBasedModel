@@ -159,9 +159,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                         end    
                     end
                 end
-                if li_collapse_recovery && states[i].LORstate
-                    states[i].Istate = max(0,states[i].Istate - rand(Poisson(states[i].Istate*licR_rate*time_step)))
-                end
+
                 # Update Bstate elements less than growth_timer with probability grate * time_step
                 #println("growth")
                 if states[i].Bstate < growth_timer
@@ -309,31 +307,34 @@ end
 #Here we define the system parameters.
 #We start with the simulation done in the Julia's thesis of different MSOI
 growth_rate = 2.0/60. #per minute
-lysis_rate = 1.0/25.0  #per minute
+lysis_rate = 1.0/27.0  #per minute
 growth_timer = 10 #max growth timer
-lysis_timer = 100 #max lysis timer, 4 timer is 1 minute
+lysis_timer = 250 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
 burst_size = 150 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
 eta = 200  #adsorption rate per box
-#If it is 10^-9 ml/min and the volume is 1micron^3, then this will be 10^3 micron^3 / minute. That is the maximum. 
+#If it is 10^-9 ml/min and the volume is 1 micron^3, then this will be 10^3 micron^3 / minute. 
+# 200 could mean I am assuming the volume is 5 micron^3. 
 
 lysis_from_without=true
-lysis_from_without_phage=100
-lo_resistance=lysis_from_without
-lo_resistance_timer=4*5
+lysis_from_without_phage=50
+lo_resistance=true
+lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
 lysis_inhibition=true
-lysis_inhibition_timer=4*10
+lysis_inhibition_timer=Int(round(5*(lysis_timer*lysis_rate)))
 li_collapse=true
-li_collapse_phage=200
-li_collapse_recovery= false
-licR_rate=1.0/300.0
-hop_rate=10
-lattice_size=60
-push_distance=lattice_size
+li_collapse_phage=100
+hop_rate=50
 #This is equal to the phage diffusion constant in the unit of lattice constant^2/min. 
-#Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. So if the lattice constant is 1 micron, 
-#240 is the maximum. 
+#Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. 
+#Lattice constant is 1.7 micron (gives 5 micron^3 volume) then hop rae is about 80. 
+#I make is smaller since the available space is small in a densely packed environment.
+#Though I am not changing it between free sites and filled site. 
+#This matters if I start thinking about the dead body. 
+lattice_size=500
+push_distance=lattice_size
+
 time_step=min(0.2/hop_rate, 1/eta)
 if(time_step*hop_rate>0.5)
     println("Hop rate is too high")
@@ -349,13 +350,14 @@ iB_series = []
 Alive_series = []
 #Infected_series = []
 #Phage_series = []
-nsamples=100
-for ibacteria in 1:20
-    nalive=0
-    for isamples in 1:nsamples
-        println("ibacteria: ", ibacteria, "isamples: ", isamples)
+#nsamples=100
+#for ibacteria in 1:20
+#    nalive=0
+#    for isamples in 1:nsamples
+#        println("ibacteria: ", ibacteria, "isamples: ", isamples)
     states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
-bacteria = ibacteria #cells
+#bacteria = ibacteria #cells
+bacteria=10
 infected= 0
 final_time = 30*25 # minutes
 # Generate random values
@@ -375,8 +377,7 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
-        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage,
-        li_collapse_recovery=li_collapse_recovery, licR_rate=licR_rate)
+        li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
         non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
         if non_zero_Bstate_count>0
@@ -385,40 +386,39 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
                 println("unclear ", ibacteria, " ", non_zero_Bstate_count)
             end
         end
-    end
+    #end
         #infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
         #totalphage=sum([state.Phage for state in states])
-        push!(iB_series, ibacteria)
-        push!(Alive_series, nalive)
+        #push!(iB_series, ibacteria)
+        #push!(Alive_series, nalive)
         #push!(Infected_series, infected_Bstate_count)
         #push!(Phage_series, totalphage)
-end
-data_dir = "data_files_space_ctirical"
-figures_dir = "figure_files_space_critical"
-mkpath(data_dir)
+#end
+#data_dir = "data_files_space_ctirical"
+figures_dir = "figure_files_space"
+#mkpath(data_dir)
 mkpath(figures_dir)
 
 
-plot(iB_series, Alive_series, label="Alive", linewidth=2) #, yscale=:log10)
+#plot(iB_series, Alive_series, label="Alive", linewidth=2) #, yscale=:log10)
 #plot!(iB_series, Infected_series, label="Infected Bacteria", linewidth=2)
 #plot!(time_P, Ptimeseries_filtered, label="Phage", linewidth=2)
 
 # Set labels and title
-xlabel!("Initial Bacteria")
-ylabel!("Probability to be alive")
-title!("Critical size")
+#xlabel!("Initial Bacteria")
+#ylabel!("Probability to be alive")
+#title!("Critical size")
 
 # Show legend
 #plot!(legend=:topright)
 
-figure_file_path = joinpath(figures_dir, "Ctirical_size_LO($lysis_from_without)_LI($lysis_inhibition)_LIC($li_collapse).pdf")
-savefig(figure_file_path)
+#figure_file_path = joinpath(figures_dir, "Ctirical_size_LO($lysis_from_without)_LI($lysis_inhibition)_LIC($li_collapse).pdf")
+#savefig(figure_file_path)
         
 
 #data_file_path = joinpath(data_dir, "Ctirical_size_LO($lysis_from_without)_LI($lysis_inhibition)_LIC($li_collapse).jld2")
 #@save  iB_series Alive_series Infected_series Phage_series 
 
-"""
 # Create the plot
 Btimeseries_2d = hcat(Btimeseries...)'
 
@@ -467,4 +467,4 @@ Ptimeseries_2d = hcat(Ptimeseries...)'
 heatmap(Ptimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Ptimeseries")
 figure_file_path = joinpath(figures_dir, "Ptimeseries_heatmap_lysis_timer($lysis_timer).pdf")
 savefig(figure_file_path)
-"""
+
