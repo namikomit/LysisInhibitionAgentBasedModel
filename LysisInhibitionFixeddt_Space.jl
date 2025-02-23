@@ -26,8 +26,7 @@ end
 # Main function
 function simulate_space_agents(states::Vector{SState}, time_step, record_time_step, final_time, 
     growth_rate, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta, hop_rate, push_distance; lysis_inhibition=false, lysis_inhibition_timer=5, 
-    lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_timer=5, li_collapse=false, li_collapse_phage=100,
-    li_collapse_recovery=false, licR_rate=1.0/10.0)
+    lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_timer=5, li_collapse=false, li_collapse_phage=100)
     # Add your code here
     
     println("started")
@@ -68,6 +67,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     LORtimeseries = []
     Phagetimeseries = []
     totalLO=0
+    totalLIC=0
 
     timenow = 0.
     lattice_size=length(states)
@@ -141,6 +141,8 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             states[i].LORstate = false
                             states[i].Istate = 0
                             states[i].Pstate = 0.0
+                            totalLIC+=1
+                            #NEED TO MEASURE THE TIME TO LYSIS
                         end
                     end
                     if lysis_inhibition
@@ -265,7 +267,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
             non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
             infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
             totalphage=sum([state.Phage for state in states])
-            println(timenow, "bacteria count: ", non_zero_Bstate_count, "infected count: ", infected_Bstate_count, "phage count: ", totalphage, "total LO: ", totalLO) 
+            println(timenow, "bacteria count: ", non_zero_Bstate_count, "infected count: ", infected_Bstate_count, "phage count: ", totalphage, "total LO: ", totalLO, "total LIC: ", totalLIC) 
             if non_zero_Bstate_count==0
                 println("All bacteria are dead")
                 timenow=final_time
@@ -323,7 +325,7 @@ lo_resistance=true
 lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
 lysis_inhibition=true
 lysis_inhibition_timer=Int(round(5*(lysis_timer*lysis_rate)))
-li_collapse=true
+li_collapse=false
 li_collapse_phage=100
 hop_rate=50
 #This is equal to the phage diffusion constant in the unit of lattice constant^2/min. 
@@ -332,7 +334,7 @@ hop_rate=50
 #I make is smaller since the available space is small in a densely packed environment.
 #Though I am not changing it between free sites and filled site. 
 #This matters if I start thinking about the dead body. 
-lattice_size=500
+lattice_size=1000
 push_distance=lattice_size
 
 time_step=min(0.2/hop_rate, 1/eta)
@@ -342,7 +344,7 @@ end
 
 
 #Now set the initial condition and run the simulation. 
-record_time_step = 1500 #minutes
+record_time_step = 1 #minutes
 
 # Initialize the states
 
@@ -357,18 +359,19 @@ Alive_series = []
 #        println("ibacteria: ", ibacteria, "isamples: ", isamples)
     states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
 #bacteria = ibacteria #cells
-bacteria=10
-infected= 0
-final_time = 30*25 # minutes
-# Generate random values
-initial_values = rand(1:growth_timer, bacteria)
+bacteria=15
+infected= 2
+final_time = 200 # minutes
+
 
 for i in 1:bacteria
-     states[Int(floor(lattice_size/2 - bacteria/2)) + i].Bstate = growth_timer # rand(1:growth_timer)
+     states[Int(floor(lattice_size/2 - bacteria/2)) + i].Bstate = rand(1:growth_timer)
 end
- states[Int(floor(lattice_size/2 - bacteria/2))].Phage = Int(floor(lysis_from_without_phage / 2))
- states[Int(floor(lattice_size/2 + bacteria/2)) + 1].Phage = Int(floor(lysis_from_without_phage / 2))
-# Create directories if they do not exist
+ states[Int(floor(lattice_size/2 - bacteria/2))].Bstate = growth_timer+1
+ states[Int(floor(lattice_size/2 + bacteria/2)) + 1].Bstate = growth_timer+1
+ states[Int(floor(lattice_size/2 - bacteria/2))].Istate = 1
+ states[Int(floor(lattice_size/2 + bacteria/2)) + 1].Istate = 1
+
 
 
 time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states = simulate_space_agents(
@@ -379,13 +382,13 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
         li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
     
-        non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
-        if non_zero_Bstate_count>0
-            nalive+=1
-            if non_zero_Bstate_count<0.9*lattice_size
-                println("unclear ", ibacteria, " ", non_zero_Bstate_count)
-            end
-        end
+    #    non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
+    #    if non_zero_Bstate_count>0
+    #        nalive+=1
+    #       if non_zero_Bstate_count<0.9*lattice_size
+    #            println("unclear ", ibacteria, " ", non_zero_Bstate_count)
+    #        end
+    #    end
     #end
         #infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
         #totalphage=sum([state.Phage for state in states])
@@ -445,26 +448,30 @@ heatmap(binary_Btimeseries_2d, xlabel="position", ylabel="time", title="Heatmap 
 #apply_custom_colormap(Btimeseries_2d, growth_timer, lysis_timer)
 
 # Save the heatmap to a file
-figure_file_path = joinpath(figures_dir, "Btimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+figure_file_path = joinpath(figures_dir, "Btimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
 savefig(figure_file_path)
 
 LORtimeseries_2d = hcat(LORtimeseries...)'
 heatmap(LORtimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of LORtimeseries")
-figure_file_path = joinpath(figures_dir, "LORtimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+figure_file_path = joinpath(figures_dir, "LORtimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
 savefig(figure_file_path)
 
 Phagetimeseries_2d = hcat(Phagetimeseries...)'
 heatmap(LORtimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Phagetimeseries")
-figure_file_path = joinpath(figures_dir, "Phagetimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+figure_file_path = joinpath(figures_dir, "Phagetimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
 savefig(figure_file_path)
 
 Itimeseries_2d = hcat(Itimeseries...)'
 heatmap(Itimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Itimeseries")
-figure_file_path = joinpath(figures_dir, "Itimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+figure_file_path = joinpath(figures_dir, "Itimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
 savefig(figure_file_path)
 
 Ptimeseries_2d = hcat(Ptimeseries...)'
 heatmap(Ptimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Ptimeseries")
-figure_file_path = joinpath(figures_dir, "Ptimeseries_heatmap_lysis_timer($lysis_timer).pdf")
+figure_file_path = joinpath(figures_dir, "Ptimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
 savefig(figure_file_path)
 
+# Create the histogram
+histogram(lysis_time_record, bins=200, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
+figure_file_path = joinpath(figures_dir, "lysis_time_histogram_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
+savefig(figure_file_path)

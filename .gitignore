@@ -5,7 +5,6 @@
 
 # Node artifact files
 data_files*/
-figure_files*/
 
 # Compiled Java class files
 *.class
