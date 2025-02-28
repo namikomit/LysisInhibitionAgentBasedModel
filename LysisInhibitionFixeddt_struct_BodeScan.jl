@@ -22,7 +22,7 @@ end
 
 # Main function
 function simulate_population_agents(states::Vector{State}, time_step, record_time_step, final_time, bacteria, phage, infected, volume, 
-    growth_rate, nutrient, lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
+    growth_rate, nutrient, lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; lysis_inhibition=false, lysis_inhibition_timer=5, 
     lysis_from_without=false, lysis_from_without_phage=10, lo_resistance=false, lo_resistance_timer=5, li_collapse=false, li_collapse_phage=100)
     # Add your code here
     
@@ -102,7 +102,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
                     if states[i].Istate > li_collapse_phage
                         #println("lysis inhibition collapse: ", states[i].Istate, " threshold: ",li_collapse_phage)
                         states[i].Bstate = 0
-                        lo_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                        lo_new_phage += max(min(Int(round(burst_rate * (states[i].Pstate - eclipse))),beta_max), 0)
                         # Append the values of Pstate that match mask_LI to lysis_time_record
                         append!(lysis_time_record, states[i].Pstate)
                     end
@@ -146,7 +146,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
             elseif states[i].Bstate == growth_timer + lysis_timer
                 if random_numbers[i] < (lrate * time_step)
                     states[i].Bstate = 0
-                    lysis_new_phage += max(Int(round(burst_rate * (states[i].Pstate - eclipse))), 0)
+                    lysis_new_phage += max(min(Int(round(burst_rate * (states[i].Pstate - eclipse))),beta_max), 0)
                     # Append the values of Pstate that match mask_lysis to lysis_time_record
                     append!(lysis_time_record, states[i].Pstate)
                 end 
@@ -224,6 +224,7 @@ growth_timer = 10 #max growth timer
 eclipse = 15    #eclipse time in minutes
 burst_size = 150 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
+beta_max = 500
 
 lysis_timer = 250 #max lysis timer
 lysis_inhibition=true
@@ -243,7 +244,7 @@ P_diff_matrix = []
 time_save_list = []
 P_diff_error   = []
 
-lysis_timer_flag=true
+lysis_timer_flag=false
 # Create directories if they do not exist
 figures_dir = "Bode_Figures_Paper"
 mkpath(figures_dir)
@@ -278,7 +279,7 @@ if(lysis_timer_flag)
     time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
-        lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+        lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
@@ -291,7 +292,7 @@ if(lysis_timer_flag)
     time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
-        lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+        lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
@@ -305,7 +306,7 @@ if(lysis_timer_flag)
     time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
-        lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+        lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
@@ -409,7 +410,7 @@ for i in 1:length(api)
     time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
-        lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+        lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
@@ -422,7 +423,7 @@ for i in 1:length(api)
     time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
-        lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+        lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
@@ -450,7 +451,7 @@ for i in 1:length(api)
     time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
-        lysis_rate, burst_rate, eclipse, growth_timer, lysis_timer, eta; 
+        lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
