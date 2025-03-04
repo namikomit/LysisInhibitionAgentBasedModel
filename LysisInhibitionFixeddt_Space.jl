@@ -314,7 +314,7 @@ lysis_rate = 1.0/27.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 250 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
-burst_size = 150 #burst size
+burst_size = 50 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
 beta_max=500
 eta = 200  #adsorption rate per box
@@ -344,7 +344,7 @@ if(time_step*hop_rate>0.5)
     println("Hop rate is too high")
 end 
 
-spatiotemporal=true
+spatiotemporal=false
 
 if(spatiotemporal)
     all_binary_Btimeseries_2d = []
@@ -435,7 +435,7 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
         #push!(Phage_series, totalphage)
 #end
 #data_dir = "data_files_space_ctirical"
-figures_dir = "figure_files_space2"
+figures_dir = "figure_files_space_burstsize50"
 #mkpath(data_dir)
 mkpath(figures_dir)
 
@@ -546,8 +546,6 @@ end
 
 plot!(p[6], framestyle = :none)
 # Save the combined plot
-figures_dir = "figure_files_space_samples"
-mkpath(figures_dir)
 figure_file_path = joinpath(figures_dir, "combined_Btimeseries_heatmap.pdf")
 savefig(p, figure_file_path)
 else
@@ -584,12 +582,12 @@ else
         global push_distance=lattice_size
 
         prob_survive = []
-        for startbacteria in 1:20   
+        for startbacteria in 1:10   
             bacteria=startbacteria
             infected= 2
             final_time = 1000 # minutes
             survival=0
-            nsample=100
+            nsample=10
             for samples in 1:nsample
                 states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
                 for i in 1:bacteria
@@ -624,7 +622,7 @@ else
 plot(df.InitialBacteria, df.Prob_survive, xlabel = "Initial uninfected bacteria", ylabel = "colony grow", title = "Probability to Grow vs Initial Uninfected Bacteria", label = "Probability to growth probability", linewidth = 2)
 
     #Here will measure the probability to collapse for given initial size of the bacteria.
-    figures_dir = "figure_files_space_samples"
+    figures_dir = "figure_files_space_samples_burstsize50"
     #mkpath(data_dir)
     mkpath(figures_dir)
 figure_file_path = joinpath(figures_dir, "prob_survive_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
