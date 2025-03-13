@@ -67,6 +67,8 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     Ptimeseries = []
     LORtimeseries = []
     Phagetimeseries = []
+    LO_record = []
+    LIC_record = []
     totalLO=0
     totalLIC=0
 
@@ -265,6 +267,10 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
             push!(Ptimeseries, [state.Pstate for state in states])
             push!(LORtimeseries, [state.LORstate for state in states])
             push!(Phagetimeseries, [state.Phage for state in states])
+            push!(LO_record, totalLO)
+            push!(LIC_record, totalLIC)
+            totalLO=0
+            totalLIC=0
             non_zero_Bstate_count = count(state -> state.Bstate != 0, states)
             infected_Bstate_count = count(state -> state.Bstate > growth_timer, states)
             totalphage=sum([state.Phage for state in states])
@@ -284,7 +290,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
         
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states
+    return time, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record
 end
 
 function custom_color_profile(value, growth_timer, lysis_timer)
@@ -314,25 +320,25 @@ lysis_rate = 1.0/27.0  #per minute
 growth_timer = 10 #max growth timer
 lysis_timer = 250 #max lysis timer, 4 timer is 1 minute
 eclipse = 15    #eclipse time in minutes
-burst_size = 50 #burst size
+burst_size = 150 #burst size
 burst_rate=burst_size/((1/lysis_rate)-eclipse)
 beta_max=500
 eta = 200  #adsorption rate per box
-#If it is 10^-9 ml/min and the volume is 1 micron^3, then this will be 10^3 micron^3 / minute. 
-# 200 could mean I am assuming the volume is 5 micron^3. 
+#If it is 2*10^-9 ml/min and the volume is 1 micron^3, then this will be 2*10^3 micron^3 / minute. 
+# 200 could mean I am assuming the volume is 10 micron^3. 
 
 global lysis_from_without=true
-lysis_from_without_phage=50
+lysis_from_without_phage=100
 global lo_resistance=true
 lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
 global lysis_inhibition=true
 lysis_inhibition_timer=Int(round(5*(lysis_timer*lysis_rate)))
 global li_collapse=true
-li_collapse_phage=100
+li_collapse_phage=150
 hop_rate=50
 #This is equal to the phage diffusion constant in the unit of lattice constant^2/min. 
-#Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. 
-#Lattice constant is 1.7 micron (gives 5 micron^3 volume) then hop rae is about 80. 
+#Phage diffusion is 4 micron^2/sec = 4*60 micron^2/min in water. D=lattice^2*hop rate. 
+#Lattice constant is 2 micron (gives 10 micron^3 volume) then hop rae is about 50. 
 #I make is smaller since the available space is small in a densely packed environment.
 #Though I am not changing it between free sites and filled site. 
 #This matters if I start thinking about the dead body. 
@@ -343,42 +349,53 @@ global time_step=min(0.2/hop_rate, 1/eta)
 if(time_step*hop_rate>0.5)
     println("Hop rate is too high")
 end 
+figures_dir = "figure_files_space_sample"
+mkpath(figures_dir)
 
 spatiotemporal=false
 
 if(spatiotemporal)
+
     all_binary_Btimeseries_2d = []
-    for i in 1:5
+    all_LO_records = []
+    all_LIC_records = []
+    for i in 1:6
         if i == 1
             global lysis_from_without = true
             global lo_resistance = true
             global lysis_inhibition = true
             global li_collapse = true
-            condition_title = "(a) LO, LIN, LINC"
-        elseif i == 2
+            condition_title = "(a) LO, LIN, LORO"
+        elseif i==2 
+            global lysis_from_without=true
+            global lo_resistance=true
+            global lysis_inhibition=false
+            global li_collapse=true
+            condition_title = "(b) LO, NO LIN"
+        elseif i == 3
             global lysis_from_without = false
             global lo_resistance = true
             global lysis_inhibition = true
             global li_collapse = true
-            condition_title = "(b) No LO, LIN, LINC"
-        elseif i == 3
+            condition_title = "(c) No LO, LIN, LORO"
+        elseif i == 4
             global lysis_from_without = true
             global lo_resistance = true
             global lysis_inhibition = true
             global li_collapse = false
-            condition_title = "(c) LO, LIN, No LINC"
-        elseif i == 4
+            condition_title = "(d) LO, LIN, No LORO"
+        elseif i == 5
             global lysis_from_without = false
             global lo_resistance = false
             global lysis_inhibition = false
             global li_collapse = false
-            condition_title = "(d) No LO, No LIN, No LINC"
-        elseif i == 5
+            condition_title = "(e) No LO, No LIN, No LORO"
+        elseif i == 6
             global lysis_from_without = false
             global lo_resistance = true
             global lysis_inhibition = true
             global li_collapse = false
-            condition_title = "(e) No LO, LIN, No LINC"
+            condition_title = "(f) No LO, LIN, No LORO"
         end
 #Now set the initial condition and run the simulation. 
 record_time_step = 1 #minutes
@@ -411,7 +428,7 @@ end
 
 
 
-time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states = simulate_space_agents(
+time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record = simulate_space_agents(
         states, time_step, record_time_step, final_time, 
         growth_rate, lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta, hop_rate, push_distance; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
@@ -435,9 +452,7 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
         #push!(Phage_series, totalphage)
 #end
 #data_dir = "data_files_space_ctirical"
-figures_dir = "figure_files_space_burstsize50"
-#mkpath(data_dir)
-mkpath(figures_dir)
+
 
 
 #plot(iB_series, Alive_series, label="Alive", linewidth=2) #, yscale=:log10)
@@ -511,46 +526,44 @@ figure_file_path = joinpath(figures_dir, "Btimeseries_heatmap_lysis_inhibition($
 savefig(figure_file_path)
 
 push!(all_binary_Btimeseries_2d,  (binary_Btimeseries_2d, condition_title))
-
-LORtimeseries_2d = hcat(LORtimeseries...)'
-heatmap(LORtimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of LORtimeseries")
-figure_file_path = joinpath(figures_dir, "LORtimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
-savefig(figure_file_path)
-
-Phagetimeseries_2d = hcat(Phagetimeseries...)'
-heatmap(LORtimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Phagetimeseries")
-figure_file_path = joinpath(figures_dir, "Phagetimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
-savefig(figure_file_path)
-
-Itimeseries_2d = hcat(Itimeseries...)'
-heatmap(Itimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Itimeseries")
-figure_file_path = joinpath(figures_dir, "Itimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
-savefig(figure_file_path)
-
-Ptimeseries_2d = hcat(Ptimeseries...)'
-heatmap(Ptimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Ptimeseries")
-figure_file_path = joinpath(figures_dir, "Ptimeseries_heatmap_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
-savefig(figure_file_path)
-
-# Create the histogram
-histogram(lysis_time_record, bins=200, label="lysis time histogram", xlabel="lysis time", ylabel="Frequency", title="Histogram of lysis time")
-figure_file_path = joinpath(figures_dir, "lysis_time_histogram_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
-savefig(figure_file_path)
+push!(all_LO_records, LO_record)
+push!(all_LIC_records, LIC_record)
 
 end
 # Plot all binary_Btimeseries_2d arrays together in one panel
-p = plot(layout = (2, 3), size = (1800, 1200))
-for (i, (binary_Btimeseries_2d, condition_title)) in enumerate(all_binary_Btimeseries_2d)
-    heatmap!(p[i], binary_Btimeseries_2d, xlabel = "position", ylabel = "time", title = condition_title, xticks = 0:50:size(binary_Btimeseries_2d, 2), yticks = 0:50:size(binary_Btimeseries_2d, 1)-1, colorbar = false, legendfontsize = 12, guidefontsize = 16, tickfontsize = 16, left_margin = 6Plots.mm, right_margin = 6Plots.mm, top_margin = 6Plots.mm, bottom_margin = 6Plots.mm)
+#p = plot(layout = (2, 3), size = (1800, 1200))
+#for (i, (binary_Btimeseries_2d, condition_title)) in enumerate(all_binary_Btimeseries_2d)
+#    heatmap!(p[i], binary_Btimeseries_2d, xlabel = "position", ylabel = "time", title = condition_title, xticks = 0:50:size(binary_Btimeseries_2d, 2), yticks = 0:50:size(binary_Btimeseries_2d, 1)-1, colorbar = false, legendfontsize = 12, guidefontsize = 16, tickfontsize = 16, left_margin = 6Plots.mm, right_margin = 6Plots.mm, top_margin = 6Plots.mm, bottom_margin = 6Plots.mm)
+#end
+# Plot all binary_Btimeseries_2d arrays together in one panel with LO_record and LIC_record
+#p = plot(layout = (3, 4), size = (1200, 1500), subplot_widths=[0.5, 0.25, 0.5, 0.25])
+#for (i, (binary_Btimeseries_2d, condition_title)) in enumerate(all_binary_Btimeseries_2d)
+#        heatmap!(p[2i-1], binary_Btimeseries_2d, xlabel = "position", ylabel = "time", title = condition_title, xticks = (1:50:301, 0:50:300), yticks =  (1:20:121, 0:20:120), colorbar = false, left_margin = 5Plots.mm, right_margin = 5Plots.mm, top_margin = 5Plots.mm, bottom_margin = 5Plots.mm)
+#        bar!(p[2i], 1:length(all_LO_records[i]), all_LO_records[i], orientation = :horizontal, label = "LO events", xlabel = "events", ylabel = "", title = "", legend = :topright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :blue)
+#        bar!(p[2i], 1:length(all_LIC_records[i]), all_LIC_records[i], orientation = :horizontal, label = "LRO events", xlabel = "events", ylabel = "", legend = :topright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :red)
+#    end
+
+#plot!(p[6], framestyle = :none)
+# Save the combined plot
+
+# Create individual plots
+plots = []
+for(i, (binary_Btimeseries_2d, condition_title)) in enumerate(all_binary_Btimeseries_2d)
+    heatmap_plot = heatmap(binary_Btimeseries_2d, xlabel = "position", ylabel = "time", title = condition_title, xticks = (1:50:301, 0:50:300), yticks =  (1:20:121, 0:20:120), colorbar = false, left_margin = 5Plots.mm, right_margin = 5Plots.mm, top_margin = 5Plots.mm, bottom_margin = 5Plots.mm)
+    bar_plot = bar(1:length(all_LO_records[i]), all_LO_records[i], orientation = :horizontal, label = "LO events", xlabel = "events", ylabel = "", title = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :blue)
+    bar!(1:length(all_LIC_records[i]), all_LIC_records[i], orientation = :horizontal, label = "LRO events", xlabel = "events", ylabel = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :red)
+
+    push!(plots, heatmap_plot, bar_plot)
 end
 
-plot!(p[6], framestyle = :none)
-# Save the combined plot
+# Combine in 3x4 layout with custom column widths
+final_plot = plot(plots..., layout=(3,4), size=(1200,1500), subplot_widths=[0.5, 0.1, 0.5, 0.1])
+
 figure_file_path = joinpath(figures_dir, "combined_Btimeseries_heatmap.pdf")
-savefig(p, figure_file_path)
+savefig(final_plot, figure_file_path)
 else
 
-    for i in 1:5
+    for i in 1:6
         if(i==1)
             global lysis_from_without=true
             global lo_resistance=true
@@ -576,18 +589,23 @@ else
             global lo_resistance=true
             global lysis_inhibition=true
             global li_collapse=false
+        elseif(i==6)
+            global lysis_from_without=true
+            global lo_resistance=true
+            global lysis_inhibition=false
+            global li_collapse=true
         end
 
         global lattice_size=300
         global push_distance=lattice_size
 
         prob_survive = []
-        for startbacteria in 1:10   
+        for startbacteria in 1:15   
             bacteria=startbacteria
             infected= 2
             final_time = 1000 # minutes
             survival=0
-            nsample=10
+            nsample=1000
             for samples in 1:nsample
                 states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
                 for i in 1:bacteria
@@ -600,7 +618,7 @@ else
 
                 record_time_step = final_time
 
-                time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states = simulate_space_agents(
+                time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record = simulate_space_agents(
                 states, time_step, record_time_step, final_time, 
                  growth_rate, lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta, hop_rate, push_distance; 
                     lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
@@ -622,9 +640,6 @@ else
 plot(df.InitialBacteria, df.Prob_survive, xlabel = "Initial uninfected bacteria", ylabel = "colony grow", title = "Probability to Grow vs Initial Uninfected Bacteria", label = "Probability to growth probability", linewidth = 2)
 
     #Here will measure the probability to collapse for given initial size of the bacteria.
-    figures_dir = "figure_files_space_samples_burstsize50"
-    #mkpath(data_dir)
-    mkpath(figures_dir)
 figure_file_path = joinpath(figures_dir, "prob_survive_lysis_inhibition($lysis_inhibition)_LO($lysis_from_without)_LIC($li_collapse).pdf")
 savefig(figure_file_path)
 

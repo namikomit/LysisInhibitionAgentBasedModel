@@ -205,11 +205,11 @@ lysis_timer = 250 #max lysis timer
 lysis_inhibition=true
 lysis_inhibition_timer=Int(round(5*(lysis_timer*lysis_rate)))
 lysis_from_without=true
-lysis_from_without_phage=50
+lysis_from_without_phage=100
 lo_resistance=true
 lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
 li_collapse=true
-global li_collapse_phage = 100
+global li_collapse_phage = 150
 time_step=0.1
 eta=2.e-9
 
@@ -217,17 +217,17 @@ eta=2.e-9
 record_time_step = 0.01 #minutes
 lysis_timer_flag=true
 # Create directories if they do not exist
-figures_dir = "Culture_Figures_Paper_test"
+figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
 volume = 0.01 #ml
 
 
 
-#Simulation without no interference
+#Simulation of a culture
 collapse_threshold_test=true
 if(collapse_threshold_test)
-    collapse_threshold = [50, 75, 100, 125, 150]
+    collapse_threshold = [100, 125, 150, 175, 200]
     collapse_time = Float64[0, 0, 0, 0, 0]
     collapse_definition_population = 1.
     initialB=5e7
@@ -268,23 +268,39 @@ end
 trace = scatter(x = collapse_threshold, y = collapse_time, mode = "markers", line = attr(size=10, color="blue"))
 
 layout_collapsetime = Layout(
+    title = attr(
+        text = "(b)",
+        font = attr(size = 20),  # Font size for the title
+        x = 0.01,  # X position of the title (0 to 1)
+        y = 0.9,  # Y position of the title (0 to 1)
+        xanchor = "left",  # Anchor the title at the center
+        yanchor = "top"  # Anchor the title at the top
+    ),
     xaxis = attr(
-        title = "LI collapse threshold", 
+        title = attr(
+            text = "LI collapse threshold",
+            font = attr(size = 20)  # Font size for the x-axis label
+        ),
         range = [0, maximum(collapse_threshold)]*1.1,
         linecolor = "black",
         linewidth = 2,
         ticks = "inside",  # Add ticks inside the plot
         showline = true,  # Show line on the bottom x-axis
-        mirror = true  # Mirror the axis lines on the top and right
+        mirror = true,  # Mirror the axis lines on the top and right
+        tickfont = attr(size = 20)  # Font size for the x-axis ticks
     ),
     yaxis = attr(
-        title = "Collapse time (min)", 
+        title = attr(
+            text = "Collapse time (min)",
+            font = attr(size = 20)  # Font size for the x-axis label
+        ), 
         range = [0, maximum(collapse_time)]*1.1,
         linecolor = "black",
         linewidth = 2,
         ticks = "inside",  # Add ticks inside the plot
         showline = true,  # Show line on the left y-axis
-        mirror = true  # Mirror the axis lines on the top and right
+        mirror = true,  # Mirror the axis lines on the top and right
+        tickfont = attr(size = 20)  # Font size for the x-axis ticks
     ),
     plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
     paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
@@ -308,7 +324,7 @@ else
     all_Ptimeseries = []
 
     
-    global li_collapse_phage = 100
+    global li_collapse_phage = 150
     antiphage_timing_list = [180.,  360.]
    
     for i in range(1, stop=3)
@@ -316,7 +332,7 @@ else
         global burst_rate=burst_size/((1/lysis_rate)-eclipse)
         initialB=5e7
         initialP=1e7
-        final_time = 6*60 # minutes
+        final_time = 10*60 # minutes
         nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
         bacteria = Int(round(initialB*volume)) #cells
         infected= 0
@@ -331,10 +347,10 @@ else
             global li_collapse_phage = 100000
         elseif(i==2)
             time_antiphage=final_time
-            global li_collapse_phage = 100
+            global li_collapse_phage = 150
         else    
             time_antiphage=180
-            global li_collapse_phage = 100
+            global li_collapse_phage = 150
         end
    
 
@@ -414,23 +430,42 @@ tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line
     #tracesB=scatter(x = all_timesB[1], y = all_Btimeseries[1], mode = "lines", name = "Bacteria $(antiphage_timing_list[1])", line = attr(width = 2))
     #tracesB2=scatter(x = all_timesB[2], y = all_Btimeseries[2], mode = "lines", name = "Bacteria $(antiphage_timing_list[2])", line = attr(width = 2))
     layout_timeseries = Layout(
+        title = attr(
+            text = "(a)",
+            font = attr(size = 20),  # Font size for the title
+            x = 0.01,  # X position of the title (0 to 1)
+            y = 0.9,  # Y position of the title (0 to 1)
+            xanchor = "left",  # Anchor the title at the center
+            yanchor = "top"  # Anchor the title at the top
+        ),
         xaxis = attr(
-            title = "Time (minutes)",
+            title = attr(
+                text = "Time (minutes)",
+                font = attr(size = 20)  # Font size for the x-axis label
+            ),
             linecolor = "black",
             linewidth = 2,
             ticks = "inside",  # Add ticks inside the plot
             showline = true,  # Show line on the bottom x-axis
-            mirror = true  # Mirror the axis lines on the top and right
+            mirror = true,   # Mirror the axis lines on the top and right
+            tickfont = attr(size = 16)  # Font size for the x-axis ticks
         ),
         yaxis = attr(
-            title = "Bacteria of Phage /ml",
+            title = attr(
+                text = "Bacteria or Phage /ml",
+                font = attr(size = 20)  # Font size for the x-axis label
+            ),
             linecolor = "black",
             linewidth = 2,
             ticks = "inside",  # Add ticks inside the plot
             type = "log", 
             tickformat = ".0e",
             showline = true,  # Show line on the left y-axis
-            mirror = true  # Mirror the axis lines on the top and right
+            mirror = true,  # Mirror the axis lines on the top and right
+            tickfont = attr(size = 16),  # Font size for the x-axis ticks
+            range = [log10(1e4), log10(1e11)],  # Set y-axis range in log scale
+            tickvals = [1e4, 1e6, 1e8,1e10],  # Set specific tick values
+            ticktext = ["10$(Char(0x2070 + 4))", "10$(Char(0x2070 + 6))", "10$(Char(0x2070 + 8))","10$(Char(0x00B9)Char(0x2070))"]  # Custom tick labels
         ),
         plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
         paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background

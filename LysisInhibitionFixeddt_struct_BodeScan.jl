@@ -230,11 +230,11 @@ lysis_timer = 250 #max lysis timer
 lysis_inhibition=true
 lysis_inhibition_timer=Int(round(5*(lysis_timer*lysis_rate)))
 lysis_from_without=true
-lysis_from_without_phage=50
+lysis_from_without_phage=100
 lo_resistance=true
 lo_resistance_timer=Int(round(10*(lysis_timer*lysis_rate)))
 li_collapse=true
-li_collapse_phage=100
+li_collapse_phage=150
 time_step=0.01
 eta0=2.e-9
 
@@ -341,30 +341,46 @@ if(lysis_timer_flag)
         y1 = data.phage_flux
     
         # Create the plot using PlotlyJS
-        trace1 = scatter(x=x1, y=y1, mode="lines+markers", name="Phage Flux Data")
+        trace1 = scatter(x=x1, y=y1, mode="lines+markers", line=attr(dash="dash"), name="Phage Flux Data")
         traces = [trace1]
     for i in 1:length(P_diff_matrix)
-    trace = scatter(x=time_save_list[i], y=P_diff_matrix[i], mode="lines+markers", name="LI timer $(lysistimer_try[i])") #, error $(P_diff_error[i])")
+    trace = scatter(x=time_save_list[i], y=P_diff_matrix[i], mode="lines+markers", name="N<sub>T</sub>=$(lysistimer_try[i])") #, error $(P_diff_error[i])")
     push!(traces, trace)
     end
     
 # Create layout with transparent background, custom legend position, ticks, and lines on top and right
 layout = Layout(
+    title = attr(
+        text = "(a)",
+        font = attr(size = 20),  # Font size for the title
+        x = 0.01,  # X position of the title (0 to 1)
+        y = 0.9,  # Y position of the title (0 to 1)
+        xanchor = "left",  # Anchor the title at the center
+        yanchor = "top"  # Anchor the title at the top
+    ),
     xaxis = attr(
-        title = "Time",
+        title = attr(
+            text = "Time",
+            font = attr(size = 20)  # Font size for the x-axis label
+        ),
         linecolor = "black",
         linewidth = 2,
         ticks = "inside",  # Add ticks inside the plot
         showline = true,  # Show line on the bottom x-axis
-        mirror = true  # Mirror the axis lines on the top and right
+        mirror = true,  # Mirror the axis lines on the top and right
+        tickfont = attr(size = 20)  # Font size for the x-axis ticks
     ),
     yaxis = attr(
-        title = "Phage Flux",
+        title = attr(
+            text = "Phage Flux",
+            font = attr(size = 20)  # Font size for the y-axis label
+        ),
         linecolor = "black",
         linewidth = 2,
         ticks = "inside",  # Add ticks inside the plot
         showline = true,  # Show line on the left y-axis
-        mirror = true  # Mirror the axis lines on the top and right
+        mirror = true,  # Mirror the axis lines on the top and right
+        tickfont = attr(size = 20)  # Font size for the y-axis ticks
     ),
     plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
     paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
@@ -373,7 +389,8 @@ layout = Layout(
         y = 0.9,  # Y position of the legend (0 to 1)
         bgcolor = "rgba(255, 255, 255, 0.5)",  # Background color of the legend
         bordercolor = "black",  # Border color of the legend
-        borderwidth = 1  # Border width of the legend
+        borderwidth = 1,  # Border width of the legend
+        font = attr(size = 16)  # Font size for the legend
     )
 )
         plot = Plot(traces, layout)
@@ -543,10 +560,47 @@ contour_trace = contour(
     y = api,
     z = P_diff_matrix_2d,
     line = attr(color = "black"),
-    contours = attr(showlabels = true, labelfont = attr(size = 12, color = "black")),
+    contours = attr(showlabels = true, labelfont = attr(size = 20, color = "black")),
     showscale = false  # Hide the contour legend
 )
-layout = Layout(xaxis_title = "Time (minutes)", yaxis_title = "API")
+#layout = Layout(xaxis_title = "Time (minutes)", yaxis_title = "API")
+# Create layout with custom font sizes and title annotation
+layout = Layout(
+    title = attr(
+        text = "(b)",
+        font = attr(size = 20),  # Font size for the title
+        x = 0,  # X position of the title (0 to 1)
+        y = 0.9,  # Y position of the title (0 to 1)
+        xanchor = "left",  # Anchor the title at the left
+        yanchor = "top"  # Anchor the title at the top
+    ),
+    xaxis = attr(
+        title = attr(
+            text = "Time (minutes)",
+            font = attr(size = 20)  # Font size for the x-axis title
+        ),
+        linecolor = "black",
+        linewidth = 2,
+        ticks = "inside",  # Add ticks inside the plot
+        showline = true,  # Show line on the bottom x-axis
+        mirror = true,  # Mirror the axis lines on the top and right
+        tickfont = attr(size = 16)  # Font size for the x-axis ticks
+    ),
+    yaxis = attr(
+        title = attr(
+            text = "API",
+            font = attr(size = 20)  # Font size for the y-axis title
+        ),
+        linecolor = "black",
+        linewidth = 2,
+        ticks = "inside",  # Add ticks inside the plot
+        showline = true,  # Show line on the left y-axis
+        mirror = true,  # Mirror the axis lines on the top and right
+        tickfont = attr(size = 16)  # Font size for the y-axis ticks
+    ),
+    plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
+    paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
+)
 plot = Plot([heatmap_trace, contour_trace], layout)
 
 #trace = heatmap(x = time, y = api, z = P_diff_matrix_2d) #, contours = attr(show=true, size=0.5, coloring="heatmap"))
