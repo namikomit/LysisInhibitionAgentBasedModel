@@ -1,6 +1,6 @@
 # My Research Code
 
-This repository contains the code related to the paper: *Agent-based Modeling of Lysis Inhibition Dynamics and Collapse in T-even Phage Infections*.
+This repository contains the code related to the paper: *Agent-based Modeling of Lysis Inhibition Dynamics and Collapse in T-even Phage Infections* by Julia Cabrera Cortada and Namiko Mitarai.
 
 ## Usage
 
