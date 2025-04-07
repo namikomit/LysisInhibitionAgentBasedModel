@@ -352,7 +352,7 @@ end
 figures_dir = "figure_files_space_sample"
 mkpath(figures_dir)
 
-spatiotemporal=false
+spatiotemporal=true
 
 if(spatiotemporal)
 
@@ -371,7 +371,7 @@ if(spatiotemporal)
             global lo_resistance=true
             global lysis_inhibition=false
             global li_collapse=true
-            condition_title = "(b) LO, NO LIN"
+            condition_title = "(b) LO, NO LIN, LORO"
         elseif i == 3
             global lysis_from_without = false
             global lo_resistance = true
@@ -551,7 +551,7 @@ plots = []
 for(i, (binary_Btimeseries_2d, condition_title)) in enumerate(all_binary_Btimeseries_2d)
     heatmap_plot = heatmap(binary_Btimeseries_2d, xlabel = "position", ylabel = "time", title = condition_title, xticks = (1:50:301, 0:50:300), yticks =  (1:20:121, 0:20:120), colorbar = false, left_margin = 5Plots.mm, right_margin = 5Plots.mm, top_margin = 5Plots.mm, bottom_margin = 5Plots.mm)
     bar_plot = bar(1:length(all_LO_records[i]), all_LO_records[i], orientation = :horizontal, label = "LO events", xlabel = "events", ylabel = "", title = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :blue)
-    bar!(1:length(all_LIC_records[i]), all_LIC_records[i], orientation = :horizontal, label = "LRO events", xlabel = "events", ylabel = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :red)
+    bar!(1:length(all_LIC_records[i]), all_LIC_records[i], orientation = :horizontal, label = "LORO events", xlabel = "events", ylabel = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :red)
 
     push!(plots, heatmap_plot, bar_plot)
 end
