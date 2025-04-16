@@ -184,9 +184,8 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
             push!(Ptimeseries,phage)
             println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end])
         end
-        #println("bacteria", bacteria, timenow, final_time)
     end
-
+    
     return time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record, states, bacteria, phage
 end
 
@@ -220,12 +219,12 @@ lysis_timer_flag=true
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
-volume = 0.01 #ml
+volume = 0.001 #ml
 
 
 
 #Simulation of a culture
-collapse_threshold_test=true
+collapse_threshold_test=false
 if(collapse_threshold_test)
     collapse_threshold = [100, 125, 150, 175, 200]
     collapse_time = Float64[0, 0, 0, 0, 0]
@@ -319,9 +318,11 @@ else
     all_timesB = []
     all_timesI = []
     all_timesP = []
+    all_timesS = []
     all_Btimeseries = []
     all_Itimeseries = []
     all_Ptimeseries = []
+    all_Stimeseries = []
 
     
     global li_collapse_phage = 150
@@ -338,8 +339,7 @@ else
         infected= 0
         phage = Int(round(initialP*volume)) # pfu
 # Generate random values
-        initial_values = rand(1:growth_timer, bacteria-infected)
-        append!(initial_values, [growth_timer + 1 for _ in 1:infected])
+        initial_values = rand(1:growth_timer, bacteria)
 #make it into an array with default values
         states = [State(initial_values[i], 0, 0.0, false) for i in 1:bacteria]
         if(i==1)
@@ -362,13 +362,16 @@ else
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
         li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
-    
-    
-phage = 0
-final_time = final_time-time_antiphage
+
+    Stimeseries=Btimeseries-Itimeseries
+    #println("Bacteria: ", Btimeseries[end], " Infected: ", Itimeseries[end], " Sensitive: ", Stimeseries[end])
+    #sleep(10)
+final_time = final_time-time_antiphage 
+if(final_time>0)
+    phage = 0
 burst_rate=0 #no phage production
 
-time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
+    time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
         bacteria, phage, infected, volume, growth_rate, nutrient,
         lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta; 
@@ -376,23 +379,39 @@ time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bac
         lysis_from_without=lysis_from_without, lysis_from_without_phage=lysis_from_without_phage, 
         lo_resistance=lo_resistance, lo_resistance_timer=lo_resistance_timer, 
         li_collapse=li_collapse, li_collapse_phage=li_collapse_phage)
+        Stimeseries2=Btimeseries2-Itimeseries2
 
-new_time = vcat(time, time2 .+ time_antiphage)
-new_Btimeseries = vcat(Btimeseries, Btimeseries2)
-new_Itimeseries = vcat(Itimeseries, Itimeseries2)
-new_Ptimeseries = vcat(Ptimeseries, Ptimeseries2)
-
-# Create the plot
-# Filter out zero or negative values
-function filter_positive(time, series)
-    positive_indices = findall(x -> x > 0, series)
-    return time[positive_indices], series[positive_indices]
+    new_time = vcat(time, time2 .+ time_antiphage)
+    new_Btimeseries = vcat(Btimeseries, Btimeseries2)
+    new_Itimeseries = vcat(Itimeseries, Itimeseries2)
+    new_Ptimeseries = vcat(Ptimeseries, Ptimeseries2)
+    new_Stimeseries = vcat(Stimeseries, Stimeseries2)
+else
+    new_time = time
+    new_Btimeseries = Btimeseries
+    new_Itimeseries = Itimeseries
+    new_Ptimeseries = Ptimeseries
+    new_Stimeseries = Stimeseries
 end
 
-time_B, Btimeseries_filtered = filter_positive(new_time, new_Btimeseries/volume)
-time_I, Itimeseries_filtered = filter_positive(new_time, new_Itimeseries/volume)
-time_P, Ptimeseries_filtered = filter_positive(new_time, new_Ptimeseries/volume)
+# Create the plot
+#println("Bacteria: ", new_Btimeseries[end], " Infected: ", new_Itimeseries[end], " Sensitive: ", new_Stimeseries[end])
+#sleep(10)
 
+time_B, Btimeseries_filtered = new_time, new_Btimeseries/volume
+time_I, Itimeseries_filtered = new_time, new_Itimeseries/volume
+time_P, Ptimeseries_filtered = new_time, new_Ptimeseries/volume
+time_S, Stimeseries_filtered = new_time, new_Stimeseries/volume
+
+if(i==2)
+nonzero_indices = findall(x -> x != 0, Stimeseries)
+println("Non-zero indices: ", nonzero_indices)
+nonzero_indices = findall(x -> x != 0, new_Stimeseries)
+println("Non-zero indices: ", nonzero_indices)
+nonzero_indices = findall(x -> x != 0, Stimeseries_filtered)
+println("Non-zero indices: ", nonzero_indices)
+exit()
+end
 #if(i==1)
 #trace=scatter(x = time_B, y = Btimeseries_filtered, mode = "lines", name = "Bacteria $(antiphage_timing_list[i])", line = attr(width = 2))
 #layout_timeseries = Layout(
@@ -412,27 +431,31 @@ push!(all_timesI, time_I)
 push!(all_Itimeseries, Itimeseries_filtered)
 push!(all_timesP, time_P)
 push!(all_Ptimeseries, Ptimeseries_filtered)
+push!(all_timesS, time_S)
+push!(all_Stimeseries, Stimeseries_filtered)
 end
 
+
 # Create the timeseries plot using PlotlyJS
+colors = ["#0072B2", "#E69F00", "#009E73"]
 i=1
-tracesB1=scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  "blue"),showlegend=false)
-tracesI1=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  "purple"),showlegend=false)
-tracesP1=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  "red"),showlegend=false)
+tracesB1=scatter(x = all_timesS[1], y = all_Stimeseries[1], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[1]),showlegend=false)
+tracesI1=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[2]),showlegend=false)
+tracesP1=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[3]),showlegend=false)
 i=2
-tracesB2=scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  "blue"),showlegend=false)
-tracesI2=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  "purple"),showlegend=false)
-tracesP2=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  "red"),showlegend=false)
+tracesB2=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  colors[1]),showlegend=false)
+tracesI2=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  colors[2]),showlegend=false)
+tracesP2=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  colors[3]),showlegend=false)
 i=3
-tracesB3=scatter(x = all_timesB[i], y = all_Btimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  "blue"),showlegend=false)
-tracesI3=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  "purple"),showlegend=false)
-tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  "red"),showlegend=false)
+tracesB3=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  colors[1]),showlegend=false)
+tracesI3=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  colors[2]),showlegend=false)
+tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  colors[3]),showlegend=false)
     #tracesB=scatter(x = all_timesB[1], y = all_Btimeseries[1], mode = "lines", name = "Bacteria $(antiphage_timing_list[1])", line = attr(width = 2))
     #tracesB2=scatter(x = all_timesB[2], y = all_Btimeseries[2], mode = "lines", name = "Bacteria $(antiphage_timing_list[2])", line = attr(width = 2))
     layout_timeseries = Layout(
         title = attr(
             text = "(a)",
-            font = attr(size = 20),  # Font size for the title
+            font = attr(size = 24),  # Font size for the title
             x = 0.01,  # X position of the title (0 to 1)
             y = 0.9,  # Y position of the title (0 to 1)
             xanchor = "left",  # Anchor the title at the center
@@ -441,19 +464,19 @@ tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line
         xaxis = attr(
             title = attr(
                 text = "Time (minutes)",
-                font = attr(size = 20)  # Font size for the x-axis label
+                font = attr(size = 24)  # Font size for the x-axis label
             ),
             linecolor = "black",
             linewidth = 2,
             ticks = "inside",  # Add ticks inside the plot
             showline = true,  # Show line on the bottom x-axis
             mirror = true,   # Mirror the axis lines on the top and right
-            tickfont = attr(size = 16)  # Font size for the x-axis ticks
+            tickfont = attr(size = 20)  # Font size for the x-axis ticks
         ),
         yaxis = attr(
             title = attr(
-                text = "Bacteria or Phage /ml",
-                font = attr(size = 20)  # Font size for the x-axis label
+                text = "Bacteria /ml or Phage /ml",
+                font = attr(size = 24)  # Font size for the x-axis label
             ),
             linecolor = "black",
             linewidth = 2,
@@ -462,9 +485,9 @@ tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line
             tickformat = ".0e",
             showline = true,  # Show line on the left y-axis
             mirror = true,  # Mirror the axis lines on the top and right
-            tickfont = attr(size = 16),  # Font size for the x-axis ticks
-            range = [log10(1e4), log10(1e11)],  # Set y-axis range in log scale
-            tickvals = [1e4, 1e6, 1e8,1e10],  # Set specific tick values
+            tickfont = attr(size = 20),  # Font size for the x-axis ticks
+            range = [log10(1e-1), log10(1e11)],  # Set y-axis range in log scale
+            #tickvals = [1e4, 1e6, 1e8,1e10],  # Set specific tick values
             ticktext = ["10$(Char(0x2070 + 4))", "10$(Char(0x2070 + 6))", "10$(Char(0x2070 + 8))","10$(Char(0x00B9)Char(0x2070))"]  # Custom tick labels
         ),
         plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
@@ -476,12 +499,24 @@ tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line
     #push!(test, tracesB2)
     #test=[tracesB, tracesB2]
 
-    plot_timeseries = plot([tracesB1, tracesI1, tracesP1, tracesB2, tracesI2,tracesP2, tracesB3, tracesI3,tracesP3], layout_timeseries)  # Use `plot` instead of `Plot`
-
+    #plot_timeseries = plot([tracesB1, tracesI1, tracesP1, tracesB2, tracesI2,tracesP2, tracesB3, tracesI3,tracesP3], layout_timeseries)  # Use `plot` instead of `Plot`
+    plot_timeseries = Plot([tracesB1, tracesB2,  tracesB3], layout_timeseries)
     # Save the timeseries plot
     savefig(plot_timeseries, joinpath(figures_dir, "Population_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage.pdf"))
 
+# Create the scatter plot
+trace = scatter(x = all_timesS[2], y = all_Stimeseries[2], mode = "lines", line = attr(color = "blue", width = 2))
 
+# Define the layout
+layout = Layout(
+    title = "Sensitive Bacteria Over Time",
+    xaxis = attr(title = "Time (minutes)"),
+    yaxis = attr(title = "Sensitive Bacteria (/ml)",type = "log",range = [log10(1e-1), log10(1e11)], tickformat = ".0e")
+)
+
+# Combine the trace and layout into a plot
+plot_s = Plot([trace], layout)
+savefig(plot_s, joinpath(figures_dir, "test.pdf"))
 
 
 #layout_Ptimeseries = Layout(
