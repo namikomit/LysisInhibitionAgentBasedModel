@@ -125,30 +125,32 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
             end
             # Update Bstate elements less than growth_timer with probability grate * time_step
             #println("growth")
-            if states[i].Bstate < growth_timer
-                states[i].Bstate += random_numbers[i] < (grate * time_step)
-            elseif states[i].Bstate == growth_timer
-                if random_numbers[i] < (grate * time_step)
-                    #println("new bacteria")    
-                    new_bacteria += 1
-                    states[i].Bstate = 1
-                end
+            if states[i].Bstate > 0
+                if states[i].Bstate < growth_timer  
+                    states[i].Bstate += random_numbers[i] < (grate * time_step)
+                elseif states[i].Bstate == growth_timer
+                    if random_numbers[i] < (grate * time_step)
+                        #println("new bacteria")    
+                        new_bacteria += 1
+                        states[i].Bstate = 1
+                    end
             # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
             #println("lysis")
-            elseif states[i].Bstate < growth_timer + lysis_timer
+                elseif states[i].Bstate < growth_timer + lysis_timer 
                 #lysis actions
                 # Add time_step to all masked elements of Pstate
-                states[i].Pstate += time_step
-                if lo_resistance & !states[i].LORstate
-                    states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
-                end
-                states[i].Bstate += random_numbers[i] < (lrate * time_step)
-            elseif states[i].Bstate == growth_timer + lysis_timer
-                if random_numbers[i] < (lrate * time_step)
-                    states[i].Bstate = 0
-                    lysis_new_phage += max(min(Int(round(burst_rate * (states[i].Pstate - eclipse))), beta_max), 0)
+                    states[i].Pstate += time_step
+                    if lo_resistance & !states[i].LORstate
+                        states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
+                    end
+                    states[i].Bstate += random_numbers[i] < (lrate * time_step)
+                elseif states[i].Bstate == growth_timer + lysis_timer
+                    if random_numbers[i] < (lrate * time_step)
+                        states[i].Bstate = 0
+                        lysis_new_phage += max(min(Int(round(burst_rate * (states[i].Pstate - eclipse))), beta_max), 0)
                     # Append the values of Pstate that match mask_lysis to lysis_time_record
-                    append!(lysis_time_record, states[i].Pstate)
+                        append!(lysis_time_record, states[i].Pstate)
+                    end 
                 end 
             end 
         end
@@ -168,6 +170,14 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
         end
         bacteria=length(states)
 
+        if(timenow>400)
+            for j in 1:length(states)
+                if states[j].Bstate <= growth_timer
+                    println("Index: $j, Bstate: $(states[j].Bstate)")
+                end
+            end
+        end
+
         if bacteria > nutrient
             println("Nutrient exhausted")
             return (time, Btimeseries, Itimeseries, Ptimeseries, lysis_time_record)
@@ -178,11 +188,11 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
         timenow = time_step*itime
         if timenow - time[end] >= record_time_step
             push!(time,timenow)  
-            push!(Btimeseries,bacteria)
+            push!(Btimeseries, bacteria)
             infected = sum([state.Bstate > growth_timer for state in states])
             push!(Itimeseries,infected)
             push!(Ptimeseries,phage)
-            println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end])
+            println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end],"BS",Btimeseries[end]-Itimeseries[end], " BI", bacteria-infected )
         end
     end
     
@@ -328,7 +338,7 @@ else
     global li_collapse_phage = 150
     antiphage_timing_list = [180.,  360.]
    
-    for i in range(1, stop=3)
+    for i in range(2, stop=3)
         global burst_size = 150 #burst size
         global burst_rate=burst_size/((1/lysis_rate)-eclipse)
         initialB=5e7
@@ -404,12 +414,12 @@ time_P, Ptimeseries_filtered = new_time, new_Ptimeseries/volume
 time_S, Stimeseries_filtered = new_time, new_Stimeseries/volume
 
 if(i==2)
-nonzero_indices = findall(x -> x != 0, Stimeseries)
-println("Non-zero indices: ", nonzero_indices)
-nonzero_indices = findall(x -> x != 0, new_Stimeseries)
-println("Non-zero indices: ", nonzero_indices)
-nonzero_indices = findall(x -> x != 0, Stimeseries_filtered)
-println("Non-zero indices: ", nonzero_indices)
+#nonzero_indices = findall(x -> x != 0, Stimeseries)
+#println("Non-zero indices: ", nonzero_indices)
+#nonzero_indices = findall(x -> x != 0, new_Stimeseries)
+#println("Non-zero indices: ", nonzero_indices)
+#nonzero_indices = findall(x -> x != 0, Stimeseries_filtered)
+#println("Non-zero indices: ", nonzero_indices)
 exit()
 end
 #if(i==1)
