@@ -372,6 +372,7 @@ else
     #println("Bacteria: ", Btimeseries[end], " Infected: ", Itimeseries[end], " Sensitive: ", Stimeseries[end])
     #sleep(10)
    final_time = final_time-time_antiphage 
+   if(final_time>0)
     phage = 0
     burst_rate=0 #no phage production
     
@@ -391,7 +392,13 @@ else
     new_Itimeseries = vcat(Itimeseries, Itimeseries2)
     new_Ptimeseries = vcat(Ptimeseries, Ptimeseries2)
     new_Stimeseries = vcat(Stimeseries, Stimeseries2)
-
+   else
+    new_time = time
+    new_Btimeseries = Btimeseries
+    new_Itimeseries = Itimeseries
+    new_Ptimeseries = Ptimeseries
+    new_Stimeseries = Stimeseries
+   end
 
 # Create the plot
 #println("Bacteria: ", new_Btimeseries[end], " Infected: ", new_Itimeseries[end], " Sensitive: ", new_Stimeseries[end])
@@ -401,6 +408,10 @@ time_B, Btimeseries_filtered = new_time, new_Btimeseries/volume
 time_I, Itimeseries_filtered = new_time, new_Itimeseries/volume
 time_P, Ptimeseries_filtered = new_time, new_Ptimeseries/volume
 time_S, Stimeseries_filtered = new_time, new_Stimeseries/volume
+if(i==1)
+    print("quasi-ss phage at the end", Ptimeseries_filtered[end-1])
+    sleep(10)
+end 
 
 
 
