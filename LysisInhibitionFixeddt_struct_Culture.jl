@@ -62,6 +62,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
     Btimeseries = Int[]
     Itimeseries = Int[]
     Ptimeseries = Int[]
+    infected = sum([state.Bstate > growth_timer for state in states])
     push!(time,timenow)  
     push!(Btimeseries,bacteria)
     push!(Itimeseries,infected)
@@ -71,6 +72,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
     lysis_time_record = Float64[]
     println(volume)
     itime=Int64(0)
+    infected = sum([state.Bstate > growth_timer for state in states])
     while timenow < final_time
         lo_new_phage=0 
         lysis_new_phage=0
@@ -170,13 +172,6 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
         end
         bacteria=length(states)
 
-        if(timenow>400)
-            for j in 1:length(states)
-                if states[j].Bstate <= growth_timer
-                    println("Index: $j, Bstate: $(states[j].Bstate)")
-                end
-            end
-        end
 
         if bacteria > nutrient
             println("Nutrient exhausted")
@@ -192,7 +187,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
             infected = sum([state.Bstate > growth_timer for state in states])
             push!(Itimeseries,infected)
             push!(Ptimeseries,phage)
-            println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end],"BS",Btimeseries[end]-Itimeseries[end], " BI", bacteria-infected )
+            println(time[end], " ", Btimeseries[end], " ", Itimeseries[end], " ", Ptimeseries[end])
         end
     end
     
@@ -229,12 +224,12 @@ lysis_timer_flag=true
 figures_dir = "Culture_Figures_Paper"
 mkpath(figures_dir)
 
-volume = 0.001 #ml
+volume = 0.01 #ml
 
 
 
 #Simulation of a culture
-collapse_threshold_test=false
+collapse_threshold_test=true
 if(collapse_threshold_test)
     collapse_threshold = [100, 125, 150, 175, 200]
     collapse_time = Float64[0, 0, 0, 0, 0]
@@ -338,16 +333,16 @@ else
     global li_collapse_phage = 150
     antiphage_timing_list = [180.,  360.]
    
-    for i in range(2, stop=3)
+    for i in range(1, stop=3)
         global burst_size = 150 #burst size
         global burst_rate=burst_size/((1/lysis_rate)-eclipse)
-        initialB=5e7
-        initialP=1e7
+        initialBB=5e7
+        initialPP=1e7
         final_time = 10*60 # minutes
         nutrient = Int(round(1.e9*volume)) #cells/ml, growth rate does not depends on it but growth stops if bacteria number reach nutrient
-        bacteria = Int(round(initialB*volume)) #cells
+        bacteria = Int(round(initialBB*volume)) #cells
         infected= 0
-        phage = Int(round(initialP*volume)) # pfu
+        phage = Int(round(initialPP*volume)) # pfu
 # Generate random values
         initial_values = rand(1:growth_timer, bacteria)
 #make it into an array with default values
@@ -376,10 +371,10 @@ else
     Stimeseries=Btimeseries-Itimeseries
     #println("Bacteria: ", Btimeseries[end], " Infected: ", Itimeseries[end], " Sensitive: ", Stimeseries[end])
     #sleep(10)
-final_time = final_time-time_antiphage 
-if(final_time>0)
+   final_time = final_time-time_antiphage 
     phage = 0
-burst_rate=0 #no phage production
+    burst_rate=0 #no phage production
+    
 
     time2, Btimeseries2, Itimeseries2, Ptimeseries2, lysis_time_record2, states, bacteria, phage = simulate_population_agents(
         states, time_step, record_time_step, final_time, 
@@ -396,13 +391,7 @@ burst_rate=0 #no phage production
     new_Itimeseries = vcat(Itimeseries, Itimeseries2)
     new_Ptimeseries = vcat(Ptimeseries, Ptimeseries2)
     new_Stimeseries = vcat(Stimeseries, Stimeseries2)
-else
-    new_time = time
-    new_Btimeseries = Btimeseries
-    new_Itimeseries = Itimeseries
-    new_Ptimeseries = Ptimeseries
-    new_Stimeseries = Stimeseries
-end
+
 
 # Create the plot
 #println("Bacteria: ", new_Btimeseries[end], " Infected: ", new_Itimeseries[end], " Sensitive: ", new_Stimeseries[end])
@@ -413,27 +402,7 @@ time_I, Itimeseries_filtered = new_time, new_Itimeseries/volume
 time_P, Ptimeseries_filtered = new_time, new_Ptimeseries/volume
 time_S, Stimeseries_filtered = new_time, new_Stimeseries/volume
 
-if(i==2)
-#nonzero_indices = findall(x -> x != 0, Stimeseries)
-#println("Non-zero indices: ", nonzero_indices)
-#nonzero_indices = findall(x -> x != 0, new_Stimeseries)
-#println("Non-zero indices: ", nonzero_indices)
-#nonzero_indices = findall(x -> x != 0, Stimeseries_filtered)
-#println("Non-zero indices: ", nonzero_indices)
-exit()
-end
-#if(i==1)
-#trace=scatter(x = time_B, y = Btimeseries_filtered, mode = "lines", name = "Bacteria $(antiphage_timing_list[i])", line = attr(width = 2))
-#layout_timeseries = Layout(
-#    xaxis = attr(title = "Time (minutes)"),
-#    yaxis = attr(title = "Bacteria (/ml)", type = "log", tickformat = ".0e")  # Set y-axis to logarithmic scale
-#)
 
-#plot_timeseries = plot(trace, layout_timeseries)  # Use `plot` instead of `Plot`
-
-# Save the timeseries plot
-#savefig(plot_timeseries, joinpath(figures_dir, "Population_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage_test.pdf"))
-#end
 
 push!(all_timesB, time_B)
 push!(all_Btimeseries, Btimeseries_filtered)
@@ -449,7 +418,7 @@ end
 # Create the timeseries plot using PlotlyJS
 colors = ["#0072B2", "#E69F00", "#009E73"]
 i=1
-tracesB1=scatter(x = all_timesS[1], y = all_Stimeseries[1], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[1]),showlegend=false)
+tracesB1=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[1]),showlegend=false)
 tracesI1=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[2]),showlegend=false)
 tracesP1=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[3]),showlegend=false)
 i=2
@@ -504,64 +473,13 @@ tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line
         paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
         legend = "false"
         )
-    #test=[]
-    #push!(test, tracesB)
-    #push!(test, tracesB2)
-    #test=[tracesB, tracesB2]
 
-    #plot_timeseries = plot([tracesB1, tracesI1, tracesP1, tracesB2, tracesI2,tracesP2, tracesB3, tracesI3,tracesP3], layout_timeseries)  # Use `plot` instead of `Plot`
-    plot_timeseries = Plot([tracesB1, tracesB2,  tracesB3], layout_timeseries)
+
+    plot_timeseries = plot([tracesB1, tracesI1, tracesP1, tracesB2, tracesI2,tracesP2, tracesB3, tracesI3,tracesP3], layout_timeseries)  # Use `plot` instead of `Plot`
+
     # Save the timeseries plot
     savefig(plot_timeseries, joinpath(figures_dir, "Population_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage.pdf"))
 
-# Create the scatter plot
-trace = scatter(x = all_timesS[2], y = all_Stimeseries[2], mode = "lines", line = attr(color = "blue", width = 2))
-
-# Define the layout
-layout = Layout(
-    title = "Sensitive Bacteria Over Time",
-    xaxis = attr(title = "Time (minutes)"),
-    yaxis = attr(title = "Sensitive Bacteria (/ml)",type = "log",range = [log10(1e-1), log10(1e11)], tickformat = ".0e")
-)
-
-# Combine the trace and layout into a plot
-plot_s = Plot([trace], layout)
-savefig(plot_s, joinpath(figures_dir, "test.pdf"))
 
 
-#layout_Ptimeseries = Layout(
-#    xaxis = attr(title = "Time (minutes)"),  
-#    yaxis = attr(title = "Phage (/ml)", type = "log")  # Set y-axis to logarithmic scale
-#)
-
-#plot_timeseries = Plot([trace_P], layout_Ptimeseries)
-
-# Save the timeseries plot
-#savefig(plot_timeseries, joinpath(figures_dir, "population_dynamics_LIC($li_collapse)_LICT($li_collapse_phage).pdf"))
-
-
-
-# Create the histogram using PlotlyJS
-#trace_histogram = histogram(x = lysis_time_record, nbinsx = 200, name = "Lysis Time Histogram")
-
-#layout_histogram = Layout(
-#    xaxis = attr(title = "Lysis Time"),
-#    yaxis = attr(title = "Frequency"),
-#    title = "Histogram of Lysis Time"
-#)
-
-#plot_histogram = Plot([trace_histogram], layout_histogram)
-
-# Save the histogram plot
-#savefig(plot_histogram, joinpath(figures_dir, "lysis_time_histogram_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage($time_antiphage).pdf"))
-
-
-#data_file_path = joinpath(figures_dir, "Btimeseries_filtered_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage($time_antiphage).csv")
-#CSV.write(data_file_path, DataFrame(time = time_B, Btimeseries = Btimeseries_filtered))
-
-#data_file_path = joinpath(figures_dir, "Itimeseries_filtered_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage($time_antiphage).csv")
-#CSV.write(data_file_path, DataFrame(time = time_I, Itimeseries = Itimeseries_filtered))
-
-#data_file_path = joinpath(figures_dir, "Ptimeseries_filtered_LIC($li_collapse)_LICT($li_collapse_phage)_antiphage($time_antiphage).csv")
-#CSV.write(data_file_path, DataFrame(time = time_P, Ptimeseries = Ptimeseries_filtered))
 end

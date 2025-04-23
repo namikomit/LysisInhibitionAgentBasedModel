@@ -62,6 +62,7 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
     Btimeseries = Int[]
     Itimeseries = Int[]
     Ptimeseries = Int[]
+    infected = sum([state.Bstate > growth_timer for state in states])
     push!(time,timenow)  
     push!(Btimeseries,bacteria)
     push!(Itimeseries,infected)
@@ -125,31 +126,33 @@ function simulate_population_agents(states::Vector{State}, time_step, record_tim
             end
             # Update Bstate elements less than growth_timer with probability grate * time_step
             #println("growth")
-            if states[i].Bstate < growth_timer
-                states[i].Bstate += random_numbers[i] < (grate * time_step)
-            elseif states[i].Bstate == growth_timer
-                if random_numbers[i] < (grate * time_step)
-                    #println("new bacteria")    
-                    new_bacteria += 1
-                    states[i].Bstate = 1
-                end
+            if states[i].Bstate >0
+                if states[i].Bstate < growth_timer
+                    states[i].Bstate += random_numbers[i] < (grate * time_step)
+                elseif states[i].Bstate == growth_timer
+                    if random_numbers[i] < (grate * time_step)
+                        #println("new bacteria")    
+                        new_bacteria += 1
+                        states[i].Bstate = 1
+                    end
             # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
             #println("lysis")
-            elseif states[i].Bstate < growth_timer + lysis_timer
-                #lysis actions
-                # Add time_step to all masked elements of Pstate
-                states[i].Pstate += time_step
-                if lo_resistance & !states[i].LORstate
-                    states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
+                elseif states[i].Bstate < growth_timer + lysis_timer
+                    #lysis actions
+                    # Add time_step to all masked elements of Pstate
+                    states[i].Pstate += time_step
+                    if lo_resistance & !states[i].LORstate
+                        states[i].LORstate = states[i].Bstate - growth_timer-1 > lo_resistance_timer
+                    end
+                    states[i].Bstate += random_numbers[i] < (lrate * time_step)
+                elseif states[i].Bstate == growth_timer + lysis_timer
+                    if random_numbers[i] < (lrate * time_step)
+                        states[i].Bstate = 0
+                        lysis_new_phage += max(min(Int(round(burst_rate * (states[i].Pstate - eclipse))),beta_max), 0)
+                        # Append the values of Pstate that match mask_lysis to lysis_time_record
+                        append!(lysis_time_record, states[i].Pstate)
+                    end 
                 end
-                states[i].Bstate += random_numbers[i] < (lrate * time_step)
-            elseif states[i].Bstate == growth_timer + lysis_timer
-                if random_numbers[i] < (lrate * time_step)
-                    states[i].Bstate = 0
-                    lysis_new_phage += max(min(Int(round(burst_rate * (states[i].Pstate - eclipse))),beta_max), 0)
-                    # Append the values of Pstate that match mask_lysis to lysis_time_record
-                    append!(lysis_time_record, states[i].Pstate)
-                end 
             end 
         end
 
@@ -244,7 +247,7 @@ P_diff_matrix = []
 time_save_list = []
 P_diff_error   = []
 
-lysis_timer_flag=false
+lysis_timer_flag=true
 # Create directories if they do not exist
 figures_dir = "Bode_Figures_Paper"
 mkpath(figures_dir)

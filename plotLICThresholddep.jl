@@ -13,8 +13,8 @@ threshold = data.threshold
 collapse_time = data.collapse_time
 
 # Define the linear fitting line
-slope = 3.0332
-y_intercept = -14.58
+slope = 3.0344
+y_intercept = -14.42
 extended_threshold = vcat(0, threshold)
 linear_fit = slope .* extended_threshold .+ y_intercept
 
