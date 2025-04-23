@@ -371,7 +371,7 @@ if(spatiotemporal)
             global lo_resistance=true
             global lysis_inhibition=false
             global li_collapse=true
-            condition_title = "(b) LO, NO LIN, LORO"
+            condition_title = "(b) LO, No LIN, LORO"
         elseif i == 3
             global lysis_from_without = false
             global lo_resistance = true
