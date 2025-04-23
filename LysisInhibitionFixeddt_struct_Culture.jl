@@ -229,7 +229,7 @@ volume = 0.01 #ml
 
 
 #Simulation of a culture
-collapse_threshold_test=true
+collapse_threshold_test=false
 if(collapse_threshold_test)
     collapse_threshold = [100, 125, 150, 175, 200]
     collapse_time = Float64[0, 0, 0, 0, 0]
@@ -418,17 +418,17 @@ end
 # Create the timeseries plot using PlotlyJS
 colors = ["#0072B2", "#E69F00", "#009E73"]
 i=1
-tracesB1=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[1]),showlegend=false)
-tracesI1=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[2]),showlegend=false)
-tracesP1=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dash", color =  colors[3]),showlegend=false)
+tracesB1=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dash", color =  colors[1]),showlegend=false)
+tracesI1=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dash", color =  colors[2]),showlegend=false)
+tracesP1=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dash", color =  colors[3]),showlegend=false)
 i=2
 tracesB2=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  colors[1]),showlegend=false)
 tracesI2=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  colors[2]),showlegend=false)
 tracesP2=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "solid", color =  colors[3]),showlegend=false)
 i=3
-tracesB3=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  colors[1]),showlegend=false)
-tracesI3=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  colors[2]),showlegend=false)
-tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 1,  dash = "dot", color =  colors[3]),showlegend=false)
+tracesB3=scatter(x = all_timesS[i], y = all_Stimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dot", color =  colors[1]),showlegend=false)
+tracesI3=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dot", color =  colors[2]),showlegend=false)
+tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dot", color =  colors[3]),showlegend=false)
     #tracesB=scatter(x = all_timesB[1], y = all_Btimeseries[1], mode = "lines", name = "Bacteria $(antiphage_timing_list[1])", line = attr(width = 2))
     #tracesB2=scatter(x = all_timesB[2], y = all_Btimeseries[2], mode = "lines", name = "Bacteria $(antiphage_timing_list[2])", line = attr(width = 2))
     layout_timeseries = Layout(
