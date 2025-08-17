@@ -8,7 +8,7 @@ using JLD2
 using CSV
 using DataFrames
 using PlotlyJS
-
+using Printf
 
 
 #Now try to create a struct
@@ -247,12 +247,12 @@ P_diff_matrix = []
 time_save_list = []
 P_diff_error   = []
 
-lysis_timer_flag=true
+lysis_timer_flag=false
 # Create directories if they do not exist
 figures_dir = "Bode_Figures_Paper"
 mkpath(figures_dir)
 if(lysis_timer_flag)
-    lysistimer_try = [50,100,150,200,250,300]
+    lysistimer_try = [50,100,150,200,250,300,350]
     for i in 1:length(lysistimer_try)
     #for i in 1:1
         # Set the initial conditions
@@ -331,7 +331,9 @@ if(lysis_timer_flag)
             for k in 1:length(time_save)-1
                 if data.time_from_infection[j]> time_save[k] && data.time_from_infection[j]< time_save[k+1]
                     tdiff=(time_save[k+1]-time_save[k])
-                    P_diff_estimate = P_diff[k]*(data.time_from_infection[j]-time_save[k]) + (P_diff[k+1]*(time_save[k+1]-data.time_from_infection[j]))/tdiff
+                    a=(P_diff[k+1]-P_diff[k]) / tdiff
+                    b=P_diff[k] - a*time_save[k]
+                    P_diff_estimate =a*data.time_from_infection[j]+b
                     Pdifferror+=(P_diff_estimate-data.phage_flux[j])^2
                     break
                 end
@@ -347,7 +349,8 @@ if(lysis_timer_flag)
         trace1 = scatter(x=x1, y=y1, mode="lines+markers", line=attr(dash="dash"), name="Phage Flux Data")
         traces = [trace1]
     for i in 1:length(P_diff_matrix)
-    trace = scatter(x=time_save_list[i], y=P_diff_matrix[i], mode="lines+markers", name="N<sub>T</sub>=$(lysistimer_try[i])") #, error $(P_diff_error[i])")
+    formatted_error = @sprintf("%.2f", P_diff_error[i])
+    trace = scatter(x=time_save_list[i], y=P_diff_matrix[i], mode="lines+markers", name="N<sub>T</sub>=$(lysistimer_try[i]), error $formatted_error")
     push!(traces, trace)
     end
     
@@ -388,7 +391,7 @@ layout = Layout(
     plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
     paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
     legend = attr(
-        x = 0.7,  # X position of the legend (0 to 1)
+        x = 0.4,  # X position of the legend (0 to 1)
         y = 0.9,  # Y position of the legend (0 to 1)
         bgcolor = "rgba(255, 255, 255, 0.5)",  # Background color of the legend
         bordercolor = "black",  # Border color of the legend
