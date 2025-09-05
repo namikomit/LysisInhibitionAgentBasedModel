@@ -31,7 +31,7 @@ scatter(threshold, collapse_time, label = "", xlabel = L"Threshold $M_{LOR}$", y
 plot!(extended_threshold, linear_fit, label = "", line = :dash, color = :red)
 
 # Add annotation for the title
-annotate!(-20, maximum(collapse_time) + 10, text("(b)", 16, :left))
+annotate!(-20, maximum(collapse_time) + 10, text("(c)", 16, :left))
 
 
 # Save the plot

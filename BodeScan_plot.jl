@@ -8,10 +8,10 @@ time_df = CSV.read("Bode_Figures_Paper/time_eta(2.0e-9)_burst(150)_lysis_timer(2
 api_df = CSV.read("Bode_Figures_Paper/api_burst(150)_lysis_timer(250).csv", DataFrame)
 
 # Define the API values to plot
-api_values = [2, 5, 10, 20]
+api_values = [2, 5, 10, 15,20, 25]
 
 # Initialize the plot
-p = plot(xlabel="Time", ylabel="P_diff", title="P_diff vs Time for Multiple API Values")
+p = plot(xlabel="Time (minutes)", ylabel="Phage flux")
 
 # Loop through each API value
 for chosen_api in api_values
@@ -31,5 +31,10 @@ for chosen_api in api_values
     plot!(p, time_values, P_diff, label="API=$chosen_api")
 end
 
+# Add annotation "(b)" at the top left of the plot
+#annotate!(p, 0.01, 0.98, text("(b)", :left, 12, :black), :relative)
+annotate!(p, time_df[1, 1], 6500000, text("(b)", :left, 12, :black))
+
+
 # Save the plot to the specified file path
-savefig("Bode_Figures_Paper/FixedAPI_eta(2.0e-9)_burst(150)_lysis_timer(250).png")
+savefig("Bode_Figures_Paper/FixedAPI_eta(2.0e-9)_burst(150)_lysis_timer(250).pdf")

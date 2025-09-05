@@ -442,6 +442,13 @@ tracesI3=scatter(x = all_timesI[i], y = all_Itimeseries[i], mode = "lines", line
 tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line = attr(width = 2,  dash = "dot", color =  colors[3]),showlegend=false)
     #tracesB=scatter(x = all_timesB[1], y = all_Btimeseries[1], mode = "lines", name = "Bacteria $(antiphage_timing_list[1])", line = attr(width = 2))
     #tracesB2=scatter(x = all_timesB[2], y = all_Btimeseries[2], mode = "lines", name = "Bacteria $(antiphage_timing_list[2])", line = attr(width = 2))
+
+for i in 1:3
+    CSV.write(joinpath(figures_dir, "timeseries_S$(i).csv"), DataFrame(time = all_timesS[i], Stimeseries = all_Stimeseries[i]))
+    CSV.write(joinpath(figures_dir, "timeseries_I$(i).csv"), DataFrame(time = all_timesI[i], Itimeseries = all_Itimeseries[i]))
+    CSV.write(joinpath(figures_dir, "timeseries_P$(i).csv"), DataFrame(time = all_timesP[i], Ptimeseries = all_Ptimeseries[i]))
+end
+
     layout_timeseries = Layout(
         title = attr(
             text = "(a)",
@@ -471,8 +478,8 @@ tracesP3=scatter(x = all_timesP[i], y = all_Ptimeseries[i], mode = "lines", line
             linecolor = "black",
             linewidth = 2,
             ticks = "inside",  # Add ticks inside the plot
-            type = "log", 
-            tickformat = ".0e",
+            #type = "log", 
+            #tickformat = ".0e",
             showline = true,  # Show line on the left y-axis
             mirror = true,  # Mirror the axis lines on the top and right
             tickfont = attr(size = 20),  # Font size for the x-axis ticks

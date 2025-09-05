@@ -247,7 +247,7 @@ P_diff_matrix = []
 time_save_list = []
 P_diff_error   = []
 
-lysis_timer_flag=false
+lysis_timer_flag=true
 # Create directories if they do not exist
 figures_dir = "Bode_Figures_Paper"
 mkpath(figures_dir)
@@ -346,11 +346,31 @@ if(lysis_timer_flag)
         y1 = data.phage_flux
     
         # Create the plot using PlotlyJS
-        trace1 = scatter(x=x1, y=y1, mode="lines+markers", line=attr(dash="dash"), name="Phage Flux Data")
+        #trace1 = scatter(x=x1, y=y1, mode="lines+markers", line=attr(dash="dash"), name="Phage Flux Data")
+        trace1 = scatter(
+    x = x1,
+    y = y1,
+    mode = "lines+markers",
+    line = attr(dash = "solid", color = "black", width = 4),  # thick black line
+    marker = attr(size = 10, color = "black"),                # large black markers
+    name = "Phage Flux Data"
+)
         traces = [trace1]
+        theory_colors = ["#E41A1C", "#377EB8", "#4DAF4A", "#984EA3", "#FF7F00", "#A65628", "#F781BF", "#999999"]
+
     for i in 1:length(P_diff_matrix)
     formatted_error = @sprintf("%.2f", P_diff_error[i])
-    trace = scatter(x=time_save_list[i], y=P_diff_matrix[i], mode="lines+markers", name="N<sub>T</sub>=$(lysistimer_try[i]), error $formatted_error")
+        color = theory_colors[mod1(i, length(theory_colors))]  # Cycle through colors if more traces than colors
+        trace = scatter(
+        x = time_save_list[i],
+        y = P_diff_matrix[i],
+        mode = "lines+markers",
+        line = attr(dash = "dash", color = color, width = 2),
+        marker = attr(size = 6, color = color, opacity = 0.5),   # smaller, semi-transparent markers
+        opacity = 0.5,                                            # semi-transparent line
+        name = "N<sub>T</sub>=$(lysistimer_try[i]), error $formatted_error"
+    )
+    #trace = scatter(x=time_save_list[i], y=P_diff_matrix[i], mode="lines+markers", name="N<sub>T</sub>=$(lysistimer_try[i]), error $formatted_error")
     push!(traces, trace)
     end
     
@@ -391,7 +411,7 @@ layout = Layout(
     plot_bgcolor = "rgba(0,0,0,0)",  # Transparent plot background
     paper_bgcolor = "rgba(0,0,0,0)",  # Transparent paper background
     legend = attr(
-        x = 0.4,  # X position of the legend (0 to 1)
+        x = 0.45,  # X position of the legend (0 to 1)
         y = 0.9,  # Y position of the legend (0 to 1)
         bgcolor = "rgba(255, 255, 255, 0.5)",  # Background color of the legend
         bordercolor = "black",  # Border color of the legend

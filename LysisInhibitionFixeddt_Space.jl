@@ -16,6 +16,7 @@ mutable struct SState
     Istate::UInt32  # Count the number of infection in total
     Pstate::Float64 # recording time spent in infected state, to compute number of produced phages for an infected bacteria, proportional to time spent in infected state (minus eclipse)
     LORstate::Bool # boolean, True if it is in Lysis from without resistant state
+    LINstate::Bool # boolean, True if it is in Lysis Inhibition state
     Phage::Int64 # number of phages at the site
 end
 
@@ -66,6 +67,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     Itimeseries = []
     Ptimeseries = []
     LORtimeseries = []
+    LINtimeseries = []
     Phagetimeseries = []
     LO_record = []
     LIC_record = []
@@ -87,6 +89,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
     push!(Itimeseries, [state.Istate for state in states])
     push!(Ptimeseries, [state.Pstate for state in states])
     push!(LORtimeseries, [state.LORstate for state in states])
+    push!(LINtimeseries, [state.LINstate for state in states])
     push!(Phagetimeseries, [state.Phage for state in states])
     while timenow < final_time
         #phage diffusion first 
@@ -129,6 +132,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             #Append the values of Pstate that match mask_LO to lysis_time_record
                             append!(lysis_time_record, states[i].Pstate)  
                             states[i].LORstate = false
+                            states[i].LINstate = false
                             states[i].Istate = 0
                             states[i].Pstate = 0.0
                             totalLO+=1               
@@ -143,6 +147,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             append!(lysis_time_record, states[i].Pstate)
                             states[i].LORstate = false
                             states[i].Istate = 0
+                            states[i].LINstate = false
                             states[i].Pstate = 0.0
                             totalLIC+=1
                             #NEED TO MEASURE THE TIME TO LYSIS
@@ -161,7 +166,8 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                         end
                         if check_LI
                             states[i].Bstate = max(growth_timer+1, states[i].Bstate - lysis_inhibition_timer*phageinfect)
-                        end    
+                            states[i].LINstate = check_LI
+                        end
                     end
                 end
 
@@ -217,6 +223,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             states[jj].Istate = states[jk1].Istate
                             states[jj].Pstate = states[jk1].Pstate
                             states[jj].LORstate = states[jk1].LORstate
+                            states[jj].LINstate = states[jk1].LINstate
                             states[jj].Phage += states[jk1].Phage
                             if k_now >1
                                 for kk in 2:k_now
@@ -228,7 +235,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                             if jk1!=i
                                 println("error")
                             end
-                            states[i]=SState(1, 0, 0.0, false, 0)
+                            states[i]=SState(1, 0, 0.0, false, false, 0)
                         end 
                     end
                 # Update Bstate elements greater than growth_timer and less than growth_timer + lysis_timer with probability lrate * time_step
@@ -248,6 +255,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
                         # Append the values of Pstate that match mask_lysis to lysis_time_record
                         append!(lysis_time_record, states[i].Pstate)
                         states[i].LORstate = false
+                        states[i].LINstate = false
                         states[i].Istate = 0
                         states[i].Pstate = 0.0
                     end 
@@ -266,6 +274,7 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
             push!(Itimeseries, [state.Istate for state in states])
             push!(Ptimeseries, [state.Pstate for state in states])
             push!(LORtimeseries, [state.LORstate for state in states])
+            push!(LINtimeseries, [state.LINstate for state in states])
             push!(Phagetimeseries, [state.Phage for state in states])
             push!(LO_record, totalLO)
             push!(LIC_record, totalLIC)
@@ -290,19 +299,21 @@ function simulate_space_agents(states::Vector{SState}, time_step, record_time_st
         
     end
 
-    return time, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record
+    return time, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, LINtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record
 end
 
-function custom_color_profile(value, growth_timer, lysis_timer)
+function custom_color_profile(value, growth_timer, lysis_timer, linstate)
     if value == 0
         return RGB(0, 0, 0)  # Black
     elseif value <= growth_timer
         blue_intensity = value / growth_timer
         return RGB(0, 0, blue_intensity)  # Blue, getting brighter
     elseif value <= growth_timer + lysis_timer
-        yellow_intensity = (value - growth_timer) / lysis_timer
-        #return RGB(yellow_intensity, yellow_intensity, yellow_intensity)  # Yellow, getting brighter
-        return RGB(1, 1, 0)  # Yellow
+        if linstate
+            return RGB(0, 1, 0)  # Green for LIN state
+        else
+            return RGB(1, 1, 0)  # Yellow for infected, not LIN
+        end
     else
         return RGB(1, 1, 1)  # White for values beyond the specified range
     end
@@ -352,7 +363,7 @@ end
 figures_dir = "figure_files_space_sample"
 mkpath(figures_dir)
 
-spatiotemporal=true
+spatiotemporal=false
 
 if(spatiotemporal)
 
@@ -411,7 +422,7 @@ Alive_series = []
 #    nalive=0
 #    for isamples in 1:nsamples
 #        println("ibacteria: ", ibacteria, "isamples: ", isamples)
-    states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
+    states = [SState(0, 0, 0.0, false, false, 0) for i in 1:lattice_size]
 #bacteria = ibacteria #cells
 bacteria=12
 infected= 2
@@ -428,7 +439,7 @@ end
 
 
 
-time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record = simulate_space_agents(
+time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, LINtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record = simulate_space_agents(
         states, time_step, record_time_step, final_time, 
         growth_rate, lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta, hop_rate, push_distance; 
         lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
@@ -476,6 +487,7 @@ time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseri
 
 # Create the plot
 Btimeseries_2d = hcat(Btimeseries...)'
+LINtimeseries_2d = hcat(LINtimeseries...)'
 
 
 # Print the type and size of the new 2D array
@@ -483,6 +495,7 @@ println("Type of Btimeseries_2d: ", typeof(Btimeseries_2d))
 println("Size of Btimeseries_2d: ", size(Btimeseries_2d))
 # Find the maximum value in Btimeseries_2d
 max_value = maximum(Btimeseries_2d)
+
 
 # Print the maximum value
 println("Maximum value in Btimeseries_2d: ", max_value)
@@ -513,11 +526,29 @@ CSV.write(csv_file_path, df)
 binary_Btimeseries_2d = Btimeseries_2d .> 0
 binaryP_Btimeseries_2d = Btimeseries_2d .> growth_timer
 
+
+
+#if(any(LINtimeseries_2d))
+#    println("LIN state happening")
+#    println(condition_title)
+#    sleep(10)
+#end 
+#LINtimeseries_2d = LINtimeseries_2d .& binaryP_B
+
 # Convert the boolean array to an integer array
-binary_Btimeseries_2d = Int.(binary_Btimeseries_2d+binaryP_Btimeseries_2d)
+binary_Btimeseries_2d = Int.(binary_Btimeseries_2d+binaryP_Btimeseries_2d+LINtimeseries_2d)
+println(condition_title, maximum(binary_Btimeseries_2d))
+
+binary_Btimeseries_2d[binary_Btimeseries_2d .== 2] .= -1
+binary_Btimeseries_2d[binary_Btimeseries_2d .== 3] .= 2
+binary_Btimeseries_2d[binary_Btimeseries_2d .== -1] .= 3
+    #sleep(10)
+
+
 #custom_colors = cgrad([:black, :yellow], [0, 1])
 
 heatmap(binary_Btimeseries_2d, xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
+
 #heatmap(Btimeseries_2d,  xlabel="position", ylabel="time", title="Heatmap of Btimeseries")
 #apply_custom_colormap(Btimeseries_2d, growth_timer, lysis_timer)
 
@@ -549,9 +580,23 @@ end
 # Create individual plots
 plots = []
 for(i, (binary_Btimeseries_2d, condition_title)) in enumerate(all_binary_Btimeseries_2d)
-    heatmap_plot = heatmap(binary_Btimeseries_2d, xlabel = "position", ylabel = "time", title = condition_title, xticks = (1:50:301, 0:50:300), yticks =  (1:20:121, 0:20:120), colorbar = false, left_margin = 5Plots.mm, right_margin = 5Plots.mm, top_margin = 5Plots.mm, bottom_margin = 5Plots.mm)
-    bar_plot = bar(1:length(all_LO_records[i]), all_LO_records[i], orientation = :horizontal, label = "LO events", xlabel = "events", ylabel = "", title = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :blue)
-    bar!(1:length(all_LIC_records[i]), all_LIC_records[i], orientation = :horizontal, label = "LORO events", xlabel = "events", ylabel = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :red)
+    heatmap_plot = heatmap(
+    binary_Btimeseries_2d[:, 90:210],
+    yflip = true, 
+    xlabel = "position",
+    ylabel = "time",
+    color = [:white, :orange, :blue, :green], 
+    title = condition_title,
+     xticks = ([10, 60, 110], ["100","150",  "200"]),
+    yticks = (1:20:121, 0:20:120),
+    colorbar = false,
+    left_margin = 5Plots.mm,
+    right_margin = 5Plots.mm,
+    top_margin = 5Plots.mm,
+    bottom_margin = 5Plots.mm
+    )
+    bar_plot = bar(1:length(all_LO_records[i]), all_LO_records[i], orientation = :horizontal, label = "LO events", xlabel = "events", ylabel = "", title = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :blue, yflip=true)
+    bar!(1:length(all_LIC_records[i]), all_LIC_records[i], orientation = :horizontal, label = "LORO events", xlabel = "events", ylabel = "", legend = :bottomright, xlims = (0, 10), ylims = (0, 120), alpha = 0.5, color = :red, yflip=true)
 
     push!(plots, heatmap_plot, bar_plot)
 end
@@ -607,7 +652,7 @@ else
             survival=0
             nsample=1000
             for samples in 1:nsample
-                states = [SState(0, 0, 0.0, false, 0) for i in 1:lattice_size]
+                states = [SState(0, 0, 0.0, false, false, 0) for i in 1:lattice_size]
                 for i in 1:bacteria
                     states[Int(floor(lattice_size/2 - bacteria/2)) + i].Bstate = rand(1:growth_timer)
                 end
@@ -618,7 +663,7 @@ else
 
                 record_time_step = final_time
 
-                time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record = simulate_space_agents(
+                time_series, Btimeseries, Itimeseries, Ptimeseries, LORtimeseries, LINtimeseries, Phagetimeseries, lysis_time_record, states, LO_record, LIC_record = simulate_space_agents(
                 states, time_step, record_time_step, final_time, 
                  growth_rate, lysis_rate, burst_rate, beta_max, eclipse, growth_timer, lysis_timer, eta, hop_rate, push_distance; 
                     lysis_inhibition=lysis_inhibition, lysis_inhibition_timer=lysis_inhibition_timer, 
