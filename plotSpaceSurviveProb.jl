@@ -5,17 +5,18 @@ using LaTeXStrings
 using GLM
 
 # Read the CSV file
-file_path = "figure_files_space_sample/prob_survive_lysis_inhibition(false)_LO(false)_LIC(false).csv"
+figures_dir = "figure_files_space_phageBC"
+file_path = "figure_files_space_phageBC/prob_survive_lysis_inhibition(false)_LO(false)_LIC(false).csv"
 dataFFF = CSV.read(file_path, DataFrame)
-file_path = "figure_files_space_sample/prob_survive_lysis_inhibition(true)_LO(false)_LIC(true).csv"
+file_path = "figure_files_space_phageBC/prob_survive_lysis_inhibition(true)_LO(false)_LIC(true).csv"
 dataTFT = CSV.read(file_path, DataFrame)
-file_path = "figure_files_space_sample/prob_survive_lysis_inhibition(true)_LO(true)_LIC(true).csv"
+file_path = "figure_files_space_phageBC/prob_survive_lysis_inhibition(true)_LO(true)_LIC(true).csv"
 dataTTT = CSV.read(file_path, DataFrame)
-file_path = "figure_files_space_sample/prob_survive_lysis_inhibition(true)_LO(true)_LIC(false).csv"
+file_path = "figure_files_space_phageBC/prob_survive_lysis_inhibition(true)_LO(true)_LIC(false).csv"
 dataTTF = CSV.read(file_path, DataFrame)
-file_path = "figure_files_space_sample/prob_survive_lysis_inhibition(true)_LO(false)_LIC(false).csv"
+file_path = "figure_files_space_phageBC/prob_survive_lysis_inhibition(true)_LO(false)_LIC(false).csv"
 dataTFF = CSV.read(file_path, DataFrame)
-file_path = "figure_files_space_sample/prob_survive_lysis_inhibition(false)_LO(true)_LIC(true).csv"
+file_path = "figure_files_space_phageBC/prob_survive_lysis_inhibition(false)_LO(true)_LIC(true).csv"
 dataFTT = CSV.read(file_path, DataFrame)
 
 
@@ -66,7 +67,7 @@ plot!(BTFF, PTFF, seriestype = :line, label = "", color=colors[6])
 
 
 # Save the plot
-figures_dir = "figure_files_space_sample"
+figures_dir = "figure_files_space_phageBC"
 mkpath(figures_dir)
 figure_file_path = joinpath(figures_dir, "prob_survive_comparison.pdf")
 savefig(figure_file_path)
