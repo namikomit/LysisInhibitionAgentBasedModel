@@ -8,9 +8,12 @@ Instructions for how to run the code:
 Figure 4: code: LysisInhibitionFixeddt_struct_BodeScan.jl
 Data: Bode_Figures_Paper
 
-Figure 5: code: LysisInhibitionFixeddt_struct_Culture.jl
+Figure 5a-c: code: LysisInhibitionFixeddt_struct_Culture.jl
 Data: Culture_Figures_Paper
-plotting for b: plotLICThresholddep.jl
+Figre 5d: code: LysisInhibitionFixeddt_struct_Culture_smallLORtime.jl
+Data: Culture_Figures_Paper_smallLORtime
+plotting for a, b,d: CultureSimulation_plot.jl
+plotting for c: plotLICThresholddep.jl
 
 Figure 6: code: LysisInhibitionFixeddt_Space_BCphage.jl
 Data: Figure_files_space_phageBC

@@ -1,6 +1,7 @@
 using CSV, DataFrames, PlotlyJS
 
-figures_dir = "Culture_Figures_Paper"
+#figures_dir = "Culture_Figures_Paper"
+figures_dir = "Culture_Figures_Paper_smallLORtime"
 
 # Load each timeseries from its CSV file
 df_S1 = CSV.read(joinpath(figures_dir, "timeseries_S1.csv"), DataFrame)
@@ -31,7 +32,7 @@ tracesP3 = scatter(x = df_P3.time, y = df_P3.Ptimeseries, mode = "lines", line =
 # --- Plot (a): log y-axis ---
 layout_log = Layout(
     title = attr(
-        text = "(a)",
+        text = "(d)",
         font = attr(size = 24),
         x = 0.01,
         y = 0.9,
@@ -45,7 +46,7 @@ layout_log = Layout(
         ticks = "inside",
         showline = true,
         mirror = true,
-        range = [0, 500],
+        range = [0, 600],
         tickfont = attr(size = 20)
     ),
     yaxis = attr(
@@ -81,7 +82,7 @@ plot_log = plot([tracesB1, tracesI1, tracesP1, tracesB2, tracesI2, tracesP2, tra
 # --- Plot (b): linear y-axis ---
 layout_linear = Layout(
     title = attr(
-        text = "(b)",
+        text = "(e)",
         font = attr(size = 24),
         x = 0.01,
         y = 0.9,
@@ -95,7 +96,7 @@ layout_linear = Layout(
         ticks = "inside",
         showline = true,
         mirror = true,
-        range = [0, 500],
+        range = [0, 600],
         tickfont = attr(size = 20)
     ),
     yaxis = attr(
