@@ -20,6 +20,8 @@ Data: Figure_files_space_phageBC
 
 Figure 7: code: LysisInhibitionFixeddt_Space_BCphage.jl
 Data: Figure_files_space_phageBC
+code for half burst size: LysisInhibitionFixeddt_Space_BCphage_smallburst.jl
+Data for half burst size: Figure_files_space_phageBC_smallburst
 plotting: plotSpaceSurviveProb.jl
 
 ## License
