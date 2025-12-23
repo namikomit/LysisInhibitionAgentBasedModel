@@ -207,7 +207,7 @@ global beta_max=500
 
 lysis_timer = 250 #max lysis timer
 lysis_inhibition=true
-lysis_inhibition_timer=Int(round(10*(lysis_timer*lysis_rate)))
+lysis_inhibition_timer=Int(round(5*(lysis_timer*lysis_rate)))
 lysis_from_without=true
 lysis_from_without_phage=100
 lo_resistance=true
